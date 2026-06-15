@@ -4,9 +4,9 @@
 
 - [ ] Create GitHub repository `ParkJaechang/personal-project-1`.
 - [ ] Add local `origin` remote and push `master` plus `codex/soop-telegram-downloader`.
-- [ ] Finish Task 2 in the implementation plan: URL parsing.
-- [ ] Finish Task 3 in the implementation plan: Telegram delivery decisions.
-- [ ] Finish Task 4 in the implementation plan: yt-dlp command builder.
+- [x] Finish Task 2 in the implementation plan: URL parsing.
+- [x] Finish Task 3 in the implementation plan: Telegram delivery decisions.
+- [x] Finish Task 4 in the implementation plan: yt-dlp command builder.
 
 ## Next
 

@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "personal-project-1-soop-telegram-clip-downloader"
+version = "0.1.0"
+description = "Telegram-controlled SOOP User Clip downloader for Windows"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["soop_clip_downloader*"]
