@@ -10,7 +10,7 @@
 
 ## Next
 
-- [ ] Add configuration loading from environment variables.
+- [x] Add configuration loading from environment variables.
 - [ ] Add Telegram Bot API client with polling.
 - [ ] Add job queue and downloader subprocess runner.
 - [ ] Add real Telegram smoke test instructions.
