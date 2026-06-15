@@ -32,14 +32,18 @@ Display title requested by the user:
 Personal Project 1
 ```
 
-GitHub repository creation is pending if this document is still only local. The GitHub connector available in this environment can read and edit existing repositories, but it did not expose a create-repository tool, and `gh` is not installed on this PC.
+GitHub repository:
+
+```text
+https://github.com/ParkJaechang/personal-project-1
+```
 
 ## Current Status
 
 - Product design is written in `docs/superpowers/specs/2026-06-16-soop-telegram-clip-downloader-design.md`.
 - Implementation plan is written in `docs/superpowers/plans/2026-06-16-soop-telegram-clip-downloader-implementation.md`.
 - Work branch: `codex/soop-telegram-downloader`.
-- First implementation slice: URL parsing, Telegram delivery decisions, and yt-dlp command construction.
+- Implemented slices: URL parsing, Telegram delivery decisions, yt-dlp command construction, environment configuration, and Telegram message orchestration.
 - Local warning: this workspace may contain untracked files for a different `personal-project-2` / `soop_summary` effort. Do not stage those files for this repository.
 
 ## Requirements
@@ -54,7 +58,7 @@ GitHub repository creation is pending if this document is still only local. The 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -e .[dev]
+python -m pip install -e .
 ```
 
 Copy `.env.example` to `.env` and fill in the real values. Do not commit `.env`.

@@ -2,8 +2,8 @@
 
 ## Now
 
-- [ ] Create GitHub repository `ParkJaechang/personal-project-1`.
-- [ ] Add local `origin` remote and push `master` plus `codex/soop-telegram-downloader`.
+- [x] Create GitHub repository `ParkJaechang/personal-project-1`.
+- [x] Add local `origin` remote and push `master` plus `codex/soop-telegram-downloader`.
 - [x] Finish Task 2 in the implementation plan: URL parsing.
 - [x] Finish Task 3 in the implementation plan: Telegram delivery decisions.
 - [x] Finish Task 4 in the implementation plan: yt-dlp command builder.
@@ -11,6 +11,7 @@
 ## Next
 
 - [x] Add configuration loading from environment variables.
+- [x] Add Telegram message orchestration for allowed chat, unsupported links, and queued links.
 - [ ] Add Telegram Bot API client with polling.
 - [ ] Add job queue and downloader subprocess runner.
 - [ ] Add real Telegram smoke test instructions.

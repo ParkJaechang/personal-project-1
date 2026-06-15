@@ -27,15 +27,16 @@ The user wants a personal automation service, not a public website. The importan
 - `yt-dlp 2026.06.09` recognized public SOOP User Clip URLs using `vod.sooplive.com/player/{number}`.
 - The older globally installed `yt-dlp 2025.12.08` on this PC did not recognize the new SOOP `.com` URL form.
 - `ffmpeg` was not found on PATH at the time of initial inspection.
-- `gh` was not installed on this PC.
+- `gh` was not installed on this PC, but browser-based GitHub repo creation and HTTPS `git push` worked after login.
 - GitHub connected account: `ParkJaechang`.
 - Intended remote repository: `ParkJaechang/personal-project-1`.
+- Created remote repository: `https://github.com/ParkJaechang/personal-project-1`.
 
 ## Current Local Git State
 
 - Branch: `codex/soop-telegram-downloader`.
 - Initial design commit exists on local history.
-- Repository remote may still be missing if GitHub creation was blocked.
+- `master` and `codex/soop-telegram-downloader` were pushed to `origin`.
 - The current workspace may contain untracked files for a separate `personal-project-2` / `soop_summary` effort. They are not part of this project and should not be staged for `Personal Project 1`.
 
 ## Continue From Another PC
@@ -48,4 +49,4 @@ The user wants a personal automation service, not a public website. The importan
 6. Run `python -m unittest discover -s tests -v`.
 7. Continue from `docs/TASKS.md`.
 
-If the GitHub repo does not exist yet, create a private or public repo named `personal-project-1`, add it as `origin`, and push the current branch.
+Continue on branch `codex/soop-telegram-downloader`.
