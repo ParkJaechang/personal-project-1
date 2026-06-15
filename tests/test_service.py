@@ -1,0 +1,153 @@
+from pathlib import Path
+import unittest
+
+from soop_clip_downloader.downloader import DownloadError, DownloadResult
+from soop_clip_downloader.jobs import InMemoryJobQueue, JobStatus
+from soop_clip_downloader.service import (
+    DownloadWorker,
+    PollingService,
+    extract_text_updates,
+)
+
+
+class RecordingTelegram:
+    def __init__(self, updates=None):
+        self.updates = list(updates or [])
+        self.offsets = []
+        self.messages = []
+
+    def get_updates(self, *, offset=None, timeout_seconds=30):
+        self.offsets.append((offset, timeout_seconds))
+        return {"ok": True, "result": self.updates}
+
+    def send_message(self, chat_id: int, text: str) -> None:
+        self.messages.append((chat_id, text))
+
+
+class RecordingApp:
+    def __init__(self):
+        self.messages = []
+
+    def handle_text_message(self, *, chat_id: int, text: str) -> None:
+        self.messages.append((chat_id, text))
+
+
+class OneJobWorker:
+    def __init__(self):
+        self.calls = 0
+
+    def process_next(self) -> bool:
+        self.calls += 1
+        return self.calls == 1
+
+
+class SucceedingDownloader:
+    def download(self, job):
+        return DownloadResult(
+            job=job,
+            file_path=Path("downloads/clip.mp4"),
+            stdout="ok",
+            stderr="",
+        )
+
+
+class FailingDownloader:
+    def download(self, job):
+        raise DownloadError("network down")
+
+
+class ServiceTests(unittest.TestCase):
+    def test_extract_text_updates_ignores_non_text_messages(self):
+        response = {
+            "ok": True,
+            "result": [
+                {
+                    "update_id": 10,
+                    "message": {"chat": {"id": 100}, "text": "hello"},
+                },
+                {"update_id": 11, "message": {"chat": {"id": 100}}},
+            ],
+        }
+
+        updates = extract_text_updates(response)
+
+        self.assertEqual(len(updates), 1)
+        self.assertEqual(updates[0].update_id, 10)
+        self.assertEqual(updates[0].chat_id, 100)
+        self.assertEqual(updates[0].text, "hello")
+
+    def test_poll_once_dispatches_messages_advances_offset_and_processes_jobs(self):
+        telegram = RecordingTelegram(
+            [
+                {
+                    "update_id": 10,
+                    "message": {"chat": {"id": 100}, "text": "hello"},
+                },
+                {
+                    "update_id": 11,
+                    "message": {"chat": {"id": 100}, "text": "again"},
+                },
+            ]
+        )
+        app = RecordingApp()
+        worker = OneJobWorker()
+        service = PollingService(
+            telegram=telegram,
+            app=app,
+            worker=worker,
+            poll_timeout_seconds=15,
+        )
+
+        service.poll_once()
+
+        self.assertEqual(telegram.offsets, [(None, 15)])
+        self.assertEqual(app.messages, [(100, "hello"), (100, "again")])
+        self.assertEqual(service.next_offset, 12)
+        self.assertEqual(worker.calls, 2)
+
+    def test_worker_marks_success_and_reports_saved_path(self):
+        queue = InMemoryJobQueue()
+        queue.enqueue("https://vod.sooplive.com/player/195880425", chat_id=100)
+        telegram = RecordingTelegram()
+        worker = DownloadWorker(
+            queue=queue,
+            downloader=SucceedingDownloader(),
+            telegram=telegram,
+        )
+
+        self.assertTrue(worker.process_next())
+
+        job = queue.get(1)
+        self.assertEqual(job.status, JobStatus.SUCCEEDED)
+        self.assertEqual(job.file_path, Path("downloads/clip.mp4"))
+        self.assertEqual(
+            telegram.messages,
+            [
+                (100, "Starting download #1: 195880425"),
+                (100, "Download complete #1: downloads\\clip.mp4"),
+            ],
+        )
+
+    def test_worker_marks_failure_and_reports_error(self):
+        queue = InMemoryJobQueue()
+        queue.enqueue("https://vod.sooplive.com/player/195880425", chat_id=100)
+        telegram = RecordingTelegram()
+        worker = DownloadWorker(
+            queue=queue,
+            downloader=FailingDownloader(),
+            telegram=telegram,
+        )
+
+        self.assertTrue(worker.process_next())
+
+        job = queue.get(1)
+        self.assertEqual(job.status, JobStatus.FAILED)
+        self.assertEqual(job.error, "network down")
+        self.assertEqual(
+            telegram.messages[-1],
+            (100, "Download failed #1: network down"),
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

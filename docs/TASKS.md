@@ -13,9 +13,10 @@
 - [x] Add configuration loading from environment variables.
 - [x] Add Telegram message orchestration for allowed chat, unsupported links, and queued links.
 - [x] Add Telegram Bot API client with polling.
-- [ ] Add job queue and downloader subprocess runner.
-- [ ] Add real Telegram smoke test instructions.
-- [ ] Add Windows startup instructions.
+- [x] Add job queue and downloader subprocess runner.
+- [x] Wire runtime entrypoint and completed-file delivery.
+- [x] Add real Telegram smoke test instructions.
+- [x] Add Windows startup instructions.
 
 ## External Setup Needed
 

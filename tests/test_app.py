@@ -57,8 +57,8 @@ class ClipBotAppTests(unittest.TestCase):
             [
                 (
                     100,
-                    "지원하는 SOOP 유저클립 링크를 찾지 못했어요. "
-                    "https://vod.sooplive.com/player/{번호} 형식만 지원합니다.",
+                    "No supported SOOP User Clip URL found. "
+                    "Use https://vod.sooplive.com/player/{id}.",
                 )
             ],
         )
@@ -90,8 +90,8 @@ class ClipBotAppTests(unittest.TestCase):
         self.assertEqual(
             telegram.messages,
             [
-                (100, "다운로드 대기열에 추가했어요: 195880425"),
-                (100, "다운로드 대기열에 추가했어요: 198263283"),
+                (100, "Queued download: 195880425"),
+                (100, "Queued download: 198263283"),
             ],
         )
 

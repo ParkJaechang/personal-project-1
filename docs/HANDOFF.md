@@ -19,7 +19,7 @@ The user wants a personal automation service, not a public website. The importan
 - Reject SOOP Catch URLs: `https://vod.sooplive.com/player/{number}/catch`.
 - Use Telegram polling first. Do not expose a public web server.
 - Start with local saves and small-file Telegram upload.
-- Add local Telegram Bot API server support for larger upload later.
+- Support local Telegram Bot API server local-path upload when configured.
 
 ## Verified Facts
 
@@ -37,6 +37,10 @@ The user wants a personal automation service, not a public website. The importan
 - Branch: `codex/soop-telegram-downloader`.
 - Initial design commit exists on local history.
 - `master` and `codex/soop-telegram-downloader` were pushed to `origin`.
+- Core test slices implemented: URL parsing, Telegram delivery decision, yt-dlp command building, config loading, Telegram polling, job queue, downloader runner, runtime wiring, and completed-file delivery.
+- Run the service with `.\scripts\run-service.ps1` or `python -m soop_clip_downloader` after environment variables are loaded.
+- Real Telegram verification steps are in `docs/TELEGRAM_SMOKE_TEST.md`.
+- Windows startup registration steps are in `docs/WINDOWS_STARTUP.md`.
 - The current workspace may contain untracked files for a separate `personal-project-2` / `soop_summary` effort. They are not part of this project and should not be staged for `Personal Project 1`.
 
 ## Continue From Another PC

@@ -40,8 +40,8 @@ class ClipBotApp:
         if not urls:
             self._telegram.send_message(
                 chat_id,
-                "지원하는 SOOP 유저클립 링크를 찾지 못했어요. "
-                "https://vod.sooplive.com/player/{번호} 형식만 지원합니다.",
+                "No supported SOOP User Clip URL found. "
+                "Use https://vod.sooplive.com/player/{id}.",
             )
             return
 
@@ -49,7 +49,7 @@ class ClipBotApp:
             self._job_queue.enqueue(url, chat_id)
             self._telegram.send_message(
                 chat_id,
-                f"다운로드 대기열에 추가했어요: {_title_no_from_url(url)}",
+                f"Queued download: {_title_no_from_url(url)}",
             )
 
 

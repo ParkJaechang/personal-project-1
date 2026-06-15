@@ -43,7 +43,7 @@ https://github.com/ParkJaechang/personal-project-1
 - Product design is written in `docs/superpowers/specs/2026-06-16-soop-telegram-clip-downloader-design.md`.
 - Implementation plan is written in `docs/superpowers/plans/2026-06-16-soop-telegram-clip-downloader-implementation.md`.
 - Work branch: `codex/soop-telegram-downloader`.
-- Implemented slices: URL parsing, Telegram delivery decisions, yt-dlp command construction, environment configuration, and Telegram message orchestration.
+- Implemented slices: URL parsing, Telegram delivery decisions, yt-dlp command construction, environment configuration, Telegram polling, job queue, downloader runner, runtime wiring, and completed-file delivery.
 - Local warning: this workspace may contain untracked files for a different `personal-project-2` / `soop_summary` effort. Do not stage those files for this repository.
 
 ## Requirements
@@ -63,15 +63,32 @@ python -m pip install -e .
 
 Copy `.env.example` to `.env` and fill in the real values. Do not commit `.env`.
 
+Run the service from PowerShell:
+
+```powershell
+.\scripts\run-service.ps1
+```
+
+Or run the Python package directly after exporting the environment variables:
+
+```powershell
+python -m soop_clip_downloader
+```
+
 ## Test
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
+## Operations
+
+- Real Telegram smoke test: `docs/TELEGRAM_SMOKE_TEST.md`
+- Windows startup registration: `docs/WINDOWS_STARTUP.md`
+
 ## Important Notes
 
 - Keep secrets out of Git.
-- Default Telegram Bot API uploads may be too small for original-quality SOOP clips.
-- A local Telegram Bot API server can be added later for large file transfer.
-- If large-file Telegram upload is not configured, the service should save the MP4 locally and send the path.
+- Default Telegram Bot API uploads are limited for new file uploads.
+- A local Telegram Bot API server can be configured for larger local-path uploads.
+- If large-file Telegram upload is not configured, the service saves the MP4 locally and sends the path.
