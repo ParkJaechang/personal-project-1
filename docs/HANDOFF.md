@@ -45,7 +45,7 @@ The user wants a personal automation service, not a public website. The importan
 3. Read `README.md`.
 4. Read the design spec in `docs/superpowers/specs/`.
 5. Read the implementation plan in `docs/superpowers/plans/`.
-6. Run `python -m pytest -q`.
+6. Run `python -m unittest discover -s tests -v`.
 7. Continue from `docs/TASKS.md`.
 
 If the GitHub repo does not exist yet, create a private or public repo named `personal-project-1`, add it as `origin`, and push the current branch.

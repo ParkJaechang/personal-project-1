@@ -62,7 +62,7 @@ Copy `.env.example` to `.env` and fill in the real values. Do not commit `.env`.
 ## Test
 
 ```powershell
-python -m pytest -q
+python -m unittest discover -s tests -v
 ```
 
 ## Important Notes

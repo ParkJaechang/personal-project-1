@@ -6,7 +6,7 @@
 
 **Architecture:** Implement a small Python package with pure modules for URL parsing, delivery decisions, configuration, and yt-dlp command construction. Keep Telegram polling and subprocess execution in thin boundary modules so core behavior stays easy to test.
 
-**Tech Stack:** Python 3.11+, pytest, yt-dlp, ffmpeg, Telegram Bot API over HTTP.
+**Tech Stack:** Python 3.11+, unittest, yt-dlp, ffmpeg, Telegram Bot API over HTTP.
 
 ---
 
@@ -112,7 +112,7 @@ def test_normalizes_legacy_domain_to_current_domain():
 Run:
 
 ```powershell
-python -m pytest tests/test_url_tools.py -q
+python -m unittest discover -s tests -p test_url_tools.py -v
 ```
 
 Expected: FAIL because `soop_clip_downloader.url_tools` does not exist yet.
@@ -126,10 +126,10 @@ Create `src/soop_clip_downloader/url_tools.py` with a regex that accepts only `/
 Run:
 
 ```powershell
-python -m pytest tests/test_url_tools.py -q
+python -m unittest discover -s tests -p test_url_tools.py -v
 ```
 
-Expected: `3 passed`.
+Expected: `Ran 3 tests` and `OK`.
 
 - [ ] **Step 5: Commit**
 
@@ -192,7 +192,7 @@ def test_reports_saved_path_for_large_files_without_local_api():
 Run:
 
 ```powershell
-python -m pytest tests/test_telegram_delivery.py -q
+python -m unittest discover -s tests -p test_telegram_delivery.py -v
 ```
 
 Expected: FAIL because `telegram_delivery` does not exist yet.
@@ -206,10 +206,10 @@ Create `DeliveryDecision` as a frozen dataclass and implement `choose_delivery_m
 Run:
 
 ```powershell
-python -m pytest tests/test_telegram_delivery.py -q
+python -m unittest discover -s tests -p test_telegram_delivery.py -v
 ```
 
-Expected: `3 passed`.
+Expected: `Ran 3 tests` and `OK`.
 
 - [ ] **Step 5: Commit**
 
@@ -260,7 +260,7 @@ def test_builds_original_quality_ytdlp_command():
 Run:
 
 ```powershell
-python -m pytest tests/test_downloader.py -q
+python -m unittest discover -s tests -p test_downloader.py -v
 ```
 
 Expected: FAIL because `downloader` does not exist yet.
@@ -274,10 +274,10 @@ Implement `build_ytdlp_command` as a pure function that returns an argv list and
 Run:
 
 ```powershell
-python -m pytest tests/test_downloader.py -q
+python -m unittest discover -s tests -p test_downloader.py -v
 ```
 
-Expected: `1 passed`.
+Expected: `Ran 1 test` and `OK`.
 
 - [ ] **Step 5: Commit**
 
@@ -307,7 +307,7 @@ Use `os.environ` and a `Settings` frozen dataclass. Avoid external dotenv parsin
 Run:
 
 ```powershell
-python -m pytest -q
+python -m unittest discover -s tests -v
 ```
 
 Expected: all tests pass.
@@ -341,7 +341,7 @@ Keep real HTTP polling out of unit tests. Put network calls behind `TelegramClie
 Run:
 
 ```powershell
-python -m pytest -q
+python -m unittest discover -s tests -v
 ```
 
 Expected: all tests pass.
