@@ -3,6 +3,11 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $ProjectRoot
 
+$VenvScripts = Join-Path $ProjectRoot ".venv\Scripts"
+if (Test-Path $VenvScripts) {
+    $env:PATH = "$VenvScripts;$env:PATH"
+}
+
 $EnvFile = Join-Path $ProjectRoot ".env"
 if (Test-Path $EnvFile) {
     Get-Content $EnvFile | ForEach-Object {
