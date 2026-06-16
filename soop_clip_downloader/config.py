@@ -35,7 +35,7 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
         telegram_allowed_chat_id=chat_id,
         download_dir=Path(source.get("DOWNLOAD_DIR", "downloads")),
         max_telegram_upload_mb=_optional_int(
-            source, "MAX_TELEGRAM_UPLOAD_MB", default=50
+            source, "MAX_TELEGRAM_UPLOAD_MB", default=500
         ),
         telegram_api_base_url=_optional_non_empty(source, "TELEGRAM_API_BASE_URL"),
         ytdlp_path=source.get("YTDLP_PATH", "yt-dlp"),

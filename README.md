@@ -85,10 +85,11 @@ python -m unittest discover -s tests -v
 
 - Real Telegram smoke test: `docs/TELEGRAM_SMOKE_TEST.md`
 - Windows startup registration: `docs/WINDOWS_STARTUP.md`
+- Default configured delivery target: 500 MB.
 
 ## Important Notes
 
 - Keep secrets out of Git.
-- Default Telegram Bot API uploads are limited for new file uploads.
-- A local Telegram Bot API server can be configured for larger local-path uploads.
+- The default Telegram Bot API can send videos only up to 50 MB.
+- A local Telegram Bot API server is required to deliver larger clips, such as 500 MB files, directly through Telegram.
 - If large-file Telegram upload is not configured, the service saves the MP4 locally and sends the path.

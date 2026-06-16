@@ -47,11 +47,12 @@ class CompletedFileDelivererTests(unittest.TestCase):
     def test_sends_large_file_path_through_local_bot_api_when_configured(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = Path(temp_dir) / "clip.mp4"
-            file_path.write_bytes(b"video")
+            with file_path.open("wb") as file:
+                file.truncate(75 * 1024 * 1024)
             telegram = RecordingTelegram()
             deliverer = CompletedFileDeliverer(
                 telegram=telegram,
-                max_default_upload_mb=0,
+                max_default_upload_mb=500,
                 local_bot_api_base_url="http://127.0.0.1:8081",
             )
 
@@ -64,11 +65,12 @@ class CompletedFileDelivererTests(unittest.TestCase):
     def test_reports_saved_path_when_file_is_too_large_without_local_bot_api(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = Path(temp_dir) / "clip.mp4"
-            file_path.write_bytes(b"video")
+            with file_path.open("wb") as file:
+                file.truncate(75 * 1024 * 1024)
             telegram = RecordingTelegram()
             deliverer = CompletedFileDeliverer(
                 telegram=telegram,
-                max_default_upload_mb=0,
+                max_default_upload_mb=500,
                 local_bot_api_base_url=None,
             )
 
