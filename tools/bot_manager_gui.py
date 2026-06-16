@@ -33,6 +33,18 @@ def run_bot_command(
     bot: str = "soop",
     timeout: int = COMMAND_TIMEOUT_SECONDS,
 ) -> subprocess.CompletedProcess[str]:
+    args = build_bot_command_args(command, bot)
+
+    if command in {"start", "restart"}:
+        result = run_bot_process(args, timeout=timeout, capture=False)
+        if result.returncode != 0:
+            return result
+        return run_bot_process(build_bot_command_args("status", bot), timeout=timeout, capture=True)
+
+    return run_bot_process(args, timeout=timeout, capture=True)
+
+
+def build_bot_command_args(command: str, bot: str = "soop") -> list[str]:
     args = [
         "powershell.exe",
         "-NoProfile",
@@ -45,15 +57,29 @@ def run_bot_command(
     if command != "list":
         args.append(bot)
 
+    return args
+
+
+def run_bot_process(
+    args: list[str],
+    timeout: int,
+    capture: bool,
+) -> subprocess.CompletedProcess[str]:
     creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    io_options: dict[str, object]
+    if capture:
+        io_options = {"capture_output": True}
+    else:
+        io_options = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+
     return subprocess.run(
         args,
         cwd=PROJECT_ROOT,
-        capture_output=True,
         text=True,
         timeout=timeout,
         check=False,
         creationflags=creationflags,
+        **io_options,
     )
 
 
