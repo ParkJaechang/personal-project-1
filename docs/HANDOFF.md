@@ -2,7 +2,7 @@
 
 ## What This Project Is
 
-This project builds a small PC service controlled from Telegram. The user sends a SOOP User Clip link from their phone. The PC downloads the clip in original quality using `yt-dlp` and then replies in Telegram with either the file or the saved local path.
+This project builds a small PC service controlled from Telegram. The user sends a SOOP User Clip link from their phone. The PC downloads the clip using `yt-dlp` at the best available quality up to 1080p and then replies in Telegram with either the file or the saved local path.
 
 ## User Intent
 
@@ -10,7 +10,7 @@ The user wants a personal automation service, not a public website. The importan
 
 1. Phone sends SOOP User Clip URL to Telegram bot.
 2. PC receives it.
-3. PC downloads the original-quality video.
+3. PC downloads the best available video up to 1080p.
 4. PC reports completion and sends the video when practical.
 
 ## Scope Decisions

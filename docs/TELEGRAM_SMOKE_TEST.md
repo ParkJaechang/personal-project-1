@@ -74,7 +74,7 @@ Run this with a known public SOOP User Clip URL:
 yt-dlp -F "https://vod.sooplive.com/player/{title_no}"
 ```
 
-Expected: `yt-dlp` lists formats, ideally including `hls-original`.
+Expected: `yt-dlp` lists formats, including a 1080p or lower format that can be selected by `best[height<=1080]`.
 
 ## 6. Run the Bot Service
 

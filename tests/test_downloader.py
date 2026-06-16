@@ -12,7 +12,7 @@ from soop_clip_downloader.jobs import DownloadJob
 
 
 class DownloaderTests(unittest.TestCase):
-    def test_builds_original_quality_ytdlp_command(self):
+    def test_builds_1080p_or_lower_ytdlp_command(self):
         command = build_ytdlp_command(
             url="https://vod.sooplive.com/player/195880425",
             download_dir=Path("downloads"),
@@ -27,9 +27,10 @@ class DownloaderTests(unittest.TestCase):
                 "--ffmpeg-location",
                 "ffmpeg",
                 "-f",
-                "hls-original/best",
+                "best[height<=1080]",
             ],
         )
+        self.assertNotIn("hls-original/best", command)
         self.assertIn("--merge-output-format", command)
         self.assertIn("--no-playlist", command)
         self.assertIn("https://vod.sooplive.com/player/195880425", command)

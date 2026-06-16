@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build a small Windows PC service that receives SOOP User Clip links from a Telegram bot, downloads the clip in original quality when available, and sends the result or status back to the user's phone through Telegram.
+Build a small Windows PC service that receives SOOP User Clip links from a Telegram bot, downloads the clip at the best available quality up to 1080p, and sends the result or status back to the user's phone through Telegram.
 
 This project targets SOOP User Clip URLs such as:
 
@@ -16,12 +16,14 @@ It does not target SOOP Catch URLs such as:
 
 As of 2026-06-16 KST, public SOOP User Clip pages using `vod.sooplive.com/player/{title_no}` are recognized by `yt-dlp` version `2026.06.09`.
 
-Observed examples exposed original-quality HLS formats such as:
+Observed examples exposed HLS formats such as:
 
 - `hls-original` at `1920x1080`
 - `hls-original` at `2560x1440`
 
 The currently installed global `yt-dlp` on this PC is older and did not recognize the new SOOP `.com` URLs, so the service should either install or vendor a current `yt-dlp` runtime. `ffmpeg` is required for reliable HLS download and MP4 output.
+
+The active downloader format policy is capped at 1080p to avoid unnecessarily large 1440p source downloads.
 
 ## Recommended Approach
 
@@ -51,7 +53,7 @@ The service has four main components:
 
 3. Downloader
    - Validates that the URL matches `https://vod.sooplive.com/player/{number}`.
-   - Calls `yt-dlp` with original-quality format preference.
+   - Calls `yt-dlp` with a best-quality-up-to-1080p format preference.
    - Uses `ffmpeg` for HLS merge/remux.
    - Writes files into a configured downloads directory.
 
@@ -67,7 +69,7 @@ The service has four main components:
 2. The service checks the sender chat ID.
 3. The service validates the URL shape.
 4. A job is queued and acknowledged in Telegram.
-5. The downloader runs `yt-dlp` using original-quality preference.
+5. The downloader runs `yt-dlp` using a 1080p-or-lower quality preference.
 6. The output MP4 is saved locally.
 7. Telegram receives either the MP4 file or a saved-file notification.
 
@@ -89,7 +91,7 @@ Expected errors should produce clear Telegram messages:
 
 - Unsupported URL: tell the user only SOOP User Clip player URLs are supported.
 - Login or age restriction: tell the user the clip may require account access and was not downloaded.
-- No original format: fall back to best available MP4/HLS format and mention the selected resolution.
+- No 1080p-or-lower format: report the `yt-dlp` selection failure.
 - `yt-dlp` failure: include the short final error line.
 - Missing `ffmpeg`: tell the user to install or configure `ffmpeg`.
 - Telegram upload too large: use the local Bot API endpoint when configured, otherwise save locally and send the path.
@@ -108,7 +110,7 @@ Implementation should include focused tests for:
 
 - SOOP URL extraction from arbitrary Telegram messages.
 - URL validation that accepts User Clip player URLs and rejects Catch URLs.
-- Format selection preference for `hls-original`.
+- Format selection preference for 1080p-or-lower output.
 - Telegram upload decision based on file size.
 - Local Bot API endpoint selection for large files.
 - Job status transitions for success and failure.

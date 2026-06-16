@@ -17,7 +17,7 @@ def build_ytdlp_command(
     ytdlp_path: str,
     ffmpeg_path: str,
 ) -> list[str]:
-    """Build a yt-dlp argv list for original-quality SOOP User Clip download."""
+    """Build a yt-dlp argv list for 1080p-or-lower SOOP User Clip download."""
 
     output_template = str(download_dir / "%(title)s [%(id)s].%(ext)s")
     return [
@@ -25,7 +25,7 @@ def build_ytdlp_command(
         "--ffmpeg-location",
         ffmpeg_path,
         "-f",
-        "hls-original/best",
+        "best[height<=1080]",
         "--merge-output-format",
         "mp4",
         "--no-playlist",
