@@ -44,6 +44,32 @@ function Resolve-BotPath {
     return Join-Path $ProjectRoot $Path
 }
 
+function Test-BotConfigValue {
+    param(
+        $Config,
+        [string] $Name
+    )
+
+    return $Config.PSObject.Properties.Name -contains $Name -and [string] $Config.$Name
+}
+
+function Invoke-BotScript {
+    param(
+        $Config,
+        [string] $PropertyName
+    )
+
+    $scriptPath = Resolve-BotPath ([string] $Config.$PropertyName)
+    $workingDirectory = Resolve-BotPath ([string] $Config.workingDirectory)
+    Push-Location $workingDirectory
+    try {
+        & $scriptPath
+    }
+    finally {
+        Pop-Location
+    }
+}
+
 function Get-BotProcesses {
     param($Config)
 
@@ -62,6 +88,11 @@ function Show-BotStatus {
         $Config
     )
 
+    if (Test-BotConfigValue -Config $Config -Name "statusScript") {
+        Invoke-BotScript -Config $Config -PropertyName "statusScript"
+        return
+    }
+
     $processes = @(Get-BotProcesses -Config $Config)
     if ($processes.Count -eq 0) {
         Write-Output "$Name stopped"
@@ -78,6 +109,11 @@ function Start-Bot {
         [string] $Name,
         $Config
     )
+
+    if ([string] $Config.startMode -eq "script") {
+        Invoke-BotScript -Config $Config -PropertyName "startScript"
+        return
+    }
 
     $processes = @(Get-BotProcesses -Config $Config)
     if ($processes.Count -gt 0) {
@@ -111,6 +147,11 @@ function Stop-Bot {
         [string] $Name,
         $Config
     )
+
+    if (Test-BotConfigValue -Config $Config -Name "stopScript") {
+        Invoke-BotScript -Config $Config -PropertyName "stopScript"
+        return
+    }
 
     $processes = @(Get-BotProcesses -Config $Config)
     if ($processes.Count -eq 0) {

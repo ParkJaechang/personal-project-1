@@ -58,8 +58,11 @@ Use `.env.example` as the template:
 TELEGRAM_BOT_TOKEN=replace-with-real-token
 TELEGRAM_ALLOWED_CHAT_ID=123456789
 DOWNLOAD_DIR=downloads
-MAX_TELEGRAM_UPLOAD_MB=500
+MAX_TELEGRAM_UPLOAD_MB=2000
 TELEGRAM_API_BASE_URL=
+TELEGRAM_API_ID=
+TELEGRAM_API_HASH=
+TELEGRAM_LOCAL_API_PORT=8081
 YTDLP_PATH=yt-dlp
 FFMPEG_PATH=ffmpeg
 ```
@@ -96,11 +99,11 @@ Expected Telegram replies:
 
 Catch URLs such as `https://vod.sooplive.com/player/{title_no}/catch` are intentionally rejected.
 
-## 7. 500 MB Clip Behavior
+## 7. 2000 MB Clip Behavior
 
-The service is configured for clips up to 500 MB by default.
+The service is configured for clips up to 2000 MB by default.
 
-The default Telegram Bot API can send videos only up to 50 MB. To receive clips larger than 50 MB, such as a 500 MB clip, directly as Telegram files, configure a local Telegram Bot API server in `TELEGRAM_API_BASE_URL`.
+The default Telegram Bot API can send videos only up to 50 MB. To receive clips larger than 50 MB, up to the local Bot API limit of 2000 MB, directly as Telegram files, configure a local Telegram Bot API server in `TELEGRAM_API_BASE_URL`.
 
 The local Telegram Bot API server supports larger uploads, including local file URI uploads, according to Telegram's Bot API documentation:
 

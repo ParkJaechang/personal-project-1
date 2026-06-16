@@ -16,7 +16,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(settings.telegram_bot_token, "123:abc")
         self.assertEqual(settings.telegram_allowed_chat_id, 987654321)
         self.assertEqual(settings.download_dir, Path("downloads"))
-        self.assertEqual(settings.max_telegram_upload_mb, 500)
+        self.assertEqual(settings.max_telegram_upload_mb, 2000)
         self.assertIsNone(settings.telegram_api_base_url)
         self.assertEqual(settings.ytdlp_path, "yt-dlp")
         self.assertEqual(settings.ffmpeg_path, "ffmpeg")

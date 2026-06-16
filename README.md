@@ -52,6 +52,7 @@ https://github.com/ParkJaechang/personal-project-1
 - `yt-dlp` version `2026.06.09` or newer
 - `ffmpeg`
 - Telegram bot token from BotFather
+- Docker Desktop, only when sending clips above 50 MB directly through Telegram
 
 ## Setup
 
@@ -78,6 +79,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 start s
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 stop soop
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 restart soop
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 logs soop
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 start telegram-local-api
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 stop telegram-local-api
 ```
 
 Create one desktop shortcut for the SOOP tools GUI:
@@ -104,11 +107,11 @@ python -m unittest discover -s tests -v
 
 - Real Telegram smoke test: `docs/TELEGRAM_SMOKE_TEST.md`
 - Windows startup registration: `docs/WINDOWS_STARTUP.md`
-- Default configured delivery target: 500 MB.
+- Default configured delivery target: 2000 MB when a local Telegram Bot API server is configured.
 
 ## Important Notes
 
 - Keep secrets out of Git.
 - The default Telegram Bot API can send videos only up to 50 MB.
-- A local Telegram Bot API server is required to deliver larger clips, such as 500 MB files, directly through Telegram.
+- A local Telegram Bot API server is required to deliver larger clips, up to 2000 MB, directly through Telegram.
 - If large-file Telegram upload is not configured, the service saves the MP4 locally and sends the path.

@@ -82,6 +82,8 @@ The service should read configuration from an `.env` file that is not committed:
 - `DOWNLOAD_DIR`
 - `MAX_TELEGRAM_UPLOAD_MB`
 - `TELEGRAM_API_BASE_URL`, optional local Bot API endpoint
+- `TELEGRAM_API_ID`, local Bot API server credential
+- `TELEGRAM_API_HASH`, local Bot API server credential
 - `YTDLP_PATH`, optional
 - `FFMPEG_PATH`, optional
 

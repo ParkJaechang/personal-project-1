@@ -43,6 +43,19 @@ class TelegramDeliveryTests(unittest.TestCase):
             "file exceeds default Bot API limit but is within configured upload limit",
         )
 
+    def test_uses_local_bot_api_for_2000mb_supported_files(self):
+        decision = choose_delivery_method(
+            file_size_bytes=1500 * 1024 * 1024,
+            max_default_upload_mb=2000,
+            local_bot_api_base_url="http://127.0.0.1:8081",
+        )
+
+        self.assertEqual(decision.method, "telegram_local_api")
+        self.assertEqual(
+            decision.reason,
+            "file exceeds default Bot API limit but is within configured upload limit",
+        )
+
     def test_reports_path_for_500mb_supported_files_without_local_api(self):
         decision = choose_delivery_method(
             file_size_bytes=400 * 1024 * 1024,
@@ -60,6 +73,19 @@ class TelegramDeliveryTests(unittest.TestCase):
         decision = choose_delivery_method(
             file_size_bytes=600 * 1024 * 1024,
             max_default_upload_mb=500,
+            local_bot_api_base_url="http://127.0.0.1:8081",
+        )
+
+        self.assertEqual(decision.method, "saved_path_only")
+        self.assertEqual(
+            decision.reason,
+            "file exceeds configured upload limit",
+        )
+
+    def test_reports_path_above_2000mb_local_api_limit(self):
+        decision = choose_delivery_method(
+            file_size_bytes=2100 * 1024 * 1024,
+            max_default_upload_mb=2000,
             local_bot_api_base_url="http://127.0.0.1:8081",
         )
 

@@ -6,6 +6,15 @@
       "startScript": "scripts/run-service.ps1",
       "processMatch": "soop_clip_downloader",
       "logDirectory": "logs"
+    },
+    "telegram-local-api": {
+      "displayName": "telegram local api",
+      "workingDirectory": ".",
+      "startMode": "script",
+      "startScript": "scripts/start-telegram-local-api.ps1",
+      "statusScript": "scripts/status-telegram-local-api.ps1",
+      "stopScript": "scripts/stop-telegram-local-api.ps1",
+      "logDirectory": "logs"
     }
   }
 }
