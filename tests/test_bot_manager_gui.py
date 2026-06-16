@@ -34,7 +34,7 @@ class BotManagerGuiTests(unittest.TestCase):
         shortcut = Path("tools/create-bot-manager-shortcut.ps1").read_text(encoding="utf-8")
 
         self.assertIn("WScript.Shell", shortcut)
-        self.assertIn("soop tools.lnk", shortcut)
+        self.assertIn("app manager.lnk", shortcut)
         self.assertIn("bot_manager_gui.py", shortcut)
 
     def test_gui_window_title_uses_requested_name(self):

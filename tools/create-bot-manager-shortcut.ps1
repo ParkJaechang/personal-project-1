@@ -1,5 +1,5 @@
 param(
-    [string] $ShortcutName = "soop tools.lnk"
+    [string] $ShortcutName = "app manager.lnk"
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,7 +27,7 @@ if (Test-Path $Pythonw) {
 }
 
 $shortcut.WorkingDirectory = $ProjectRoot
-$shortcut.Description = "Open soop tools."
+$shortcut.Description = "Open app manager."
 $shortcut.Save()
 
 Write-Output $ShortcutPath

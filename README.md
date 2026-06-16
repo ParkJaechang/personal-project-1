@@ -86,7 +86,7 @@ Create one desktop shortcut for the SOOP tools GUI:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\create-bot-manager-shortcut.ps1
 ```
 
-Then open `soop tools` from the desktop to start, stop, restart, refresh, or open logs/downloads for registered SOOP apps.
+Then open `app manager` from the desktop to start, stop, restart, refresh, or open logs/downloads for registered apps.
 
 Or run the Python package directly after exporting the environment variables:
 
