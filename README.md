@@ -69,6 +69,17 @@ Run the service from PowerShell:
 .\scripts\run-service.ps1
 ```
 
+Manage registered local bots from PowerShell:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 list
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 status soop
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 start soop
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 stop soop
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 restart soop
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 logs soop
+```
+
 Or run the Python package directly after exporting the environment variables:
 
 ```powershell
