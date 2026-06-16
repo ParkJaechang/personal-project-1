@@ -1,7 +1,7 @@
 {
   "bots": {
     "soop": {
-      "displayName": "SOOP Telegram Clip Downloader",
+      "displayName": "soop clip",
       "workingDirectory": ".",
       "startScript": "scripts/run-service.ps1",
       "processMatch": "soop_clip_downloader",

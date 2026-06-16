@@ -15,6 +15,7 @@ TOOL_ROOT = PROJECT_ROOT / "tools"
 MANIFEST_PATH = TOOL_ROOT / "bots.json"
 BOT_SCRIPT = TOOL_ROOT / "bots.ps1"
 COMMAND_TIMEOUT_SECONDS = 60
+APP_NAME = "soop tools"
 
 
 def load_manifest(path: Path = MANIFEST_PATH) -> dict:
@@ -107,7 +108,7 @@ def format_result(command: str, result: subprocess.CompletedProcess[str]) -> str
 class BotManagerApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("Bot Manager")
+        self.title(APP_NAME)
         self.geometry("760x500")
         self.minsize(640, 420)
 
@@ -208,7 +209,7 @@ class BotManagerApp(tk.Tk):
         try:
             bot = self._selected_bot()
         except ValueError as error:
-            messagebox.showerror("Bot Manager", str(error))
+            messagebox.showerror(APP_NAME, str(error))
             return
 
         self.status_var.set(f"{command}...")
@@ -246,7 +247,7 @@ class BotManagerApp(tk.Tk):
         self._update_status_from_text(result.stdout)
         if result.returncode != 0:
             self.status_var.set("error")
-            messagebox.showerror("Bot Manager", result.stderr.strip() or text)
+            messagebox.showerror(APP_NAME, result.stderr.strip() or text)
             return
         if after_status:
             self.refresh_status()

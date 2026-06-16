@@ -21,7 +21,7 @@ class BotManagerGuiTests(unittest.TestCase):
         self.assertTrue(callable(module.run_bot_command))
         self.assertTrue(callable(module.open_path))
         self.assertTrue(hasattr(module, "BotManagerApp"))
-        self.assertEqual(module.load_manifest()["bots"]["soop"]["displayName"], "SOOP Telegram Clip Downloader")
+        self.assertEqual(module.load_manifest()["bots"]["soop"]["displayName"], "soop clip")
 
     def test_desktop_launcher_uses_pythonw_and_gui_module(self):
         launcher = Path("tools/bot-manager-gui.ps1").read_text(encoding="utf-8")
@@ -34,8 +34,14 @@ class BotManagerGuiTests(unittest.TestCase):
         shortcut = Path("tools/create-bot-manager-shortcut.ps1").read_text(encoding="utf-8")
 
         self.assertIn("WScript.Shell", shortcut)
-        self.assertIn("Bot Manager.lnk", shortcut)
+        self.assertIn("soop tools.lnk", shortcut)
         self.assertIn("bot_manager_gui.py", shortcut)
+
+    def test_gui_window_title_uses_requested_name(self):
+        gui = Path("tools/bot_manager_gui.py").read_text(encoding="utf-8")
+
+        self.assertIn('APP_NAME = "soop tools"', gui)
+        self.assertIn("self.title(APP_NAME)", gui)
 
     def test_start_command_does_not_capture_long_running_service_pipes(self):
         module = load_gui_module()

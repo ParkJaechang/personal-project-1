@@ -9,7 +9,7 @@ class BotManagerTests(unittest.TestCase):
 
         self.assertIn("soop", manifest["bots"])
         soop = manifest["bots"]["soop"]
-        self.assertEqual(soop["displayName"], "SOOP Telegram Clip Downloader")
+        self.assertEqual(soop["displayName"], "soop clip")
         self.assertEqual(soop["workingDirectory"], ".")
         self.assertEqual(soop["startScript"], "scripts/run-service.ps1")
         self.assertEqual(soop["processMatch"], "soop_clip_downloader")
