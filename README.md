@@ -83,6 +83,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 start t
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 stop telegram-local-api
 ```
 
+If Docker Desktop cannot start because WSL is not enabled, run this once from an elevated PowerShell window and restart Windows:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\enable-wsl-for-docker.ps1
+```
+
 Create one desktop shortcut for the SOOP tools GUI:
 
 ```powershell

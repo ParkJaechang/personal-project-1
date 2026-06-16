@@ -36,23 +36,73 @@ function Get-EnvValue {
     return $Default
 }
 
+function Resolve-DockerCommand {
+    $docker = Get-Command "docker" -ErrorAction SilentlyContinue
+    if ($docker) {
+        return $docker.Source
+    }
+
+    $defaultDocker = "C:\Program Files\Docker\Docker\resources\bin\docker.exe"
+    if (Test-Path $defaultDocker) {
+        return $defaultDocker
+    }
+
+    return $null
+}
+
+function Invoke-DockerText {
+    param(
+        [string] $Docker,
+        [string[]] $Arguments,
+        [int] $TimeoutSeconds = 8
+    )
+
+    $job = Start-Job -ScriptBlock {
+        param($DockerPath, $DockerArguments)
+        $output = & $DockerPath @DockerArguments 2>&1
+        [pscustomobject]@{
+            ExitCode = $LASTEXITCODE
+            Output = ($output -join "`n")
+        }
+    } -ArgumentList $Docker, $Arguments
+
+    if (-not (Wait-Job $job -Timeout $TimeoutSeconds)) {
+        Stop-Job $job -ErrorAction SilentlyContinue
+        Remove-Job $job -Force -ErrorAction SilentlyContinue
+        return [pscustomobject]@{
+            ExitCode = 124
+            Output = "Docker command timed out"
+        }
+    }
+
+    $result = Receive-Job $job 2>&1
+    Remove-Job $job -Force -ErrorAction SilentlyContinue
+    return $result
+}
+
 Import-ProjectEnv
 
-$docker = Get-Command "docker" -ErrorAction SilentlyContinue
+$docker = Resolve-DockerCommand
 if (-not $docker) {
     Write-Output "telegram-local-api already stopped (Docker not found)"
     exit 0
 }
 
 $containerName = Get-EnvValue -Name "TELEGRAM_LOCAL_API_CONTAINER" -Default "pp1-telegram-bot-api"
-$status = & docker inspect -f "{{.State.Status}}" $containerName 2>$null
-if ($LASTEXITCODE -ne 0) {
+$statusResult = Invoke-DockerText -Docker $docker -Arguments @("inspect", "-f", "{{.State.Status}}", $containerName)
+if ($statusResult.ExitCode -eq 124) {
+    Write-Output "telegram-local-api already stopped (Docker engine not running)"
+    exit 0
+}
+
+if ($statusResult.ExitCode -ne 0) {
     Write-Output "telegram-local-api already stopped"
     exit 0
 }
 
+$status = $statusResult.Output.Trim()
 if ($status -eq "running") {
-    & docker stop $containerName | Out-Null
+    Invoke-DockerText -Docker $docker -Arguments @("stop", $containerName) | Out-Null
     Write-Output "telegram-local-api stopped container=$containerName"
     exit 0
 }

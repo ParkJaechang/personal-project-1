@@ -36,9 +36,53 @@ function Get-EnvValue {
     return $Default
 }
 
+function Resolve-DockerCommand {
+    $docker = Get-Command "docker" -ErrorAction SilentlyContinue
+    if ($docker) {
+        return $docker.Source
+    }
+
+    $defaultDocker = "C:\Program Files\Docker\Docker\resources\bin\docker.exe"
+    if (Test-Path $defaultDocker) {
+        return $defaultDocker
+    }
+
+    return $null
+}
+
+function Invoke-DockerText {
+    param(
+        [string] $Docker,
+        [string[]] $Arguments,
+        [int] $TimeoutSeconds = 8
+    )
+
+    $job = Start-Job -ScriptBlock {
+        param($DockerPath, $DockerArguments)
+        $output = & $DockerPath @DockerArguments 2>&1
+        [pscustomobject]@{
+            ExitCode = $LASTEXITCODE
+            Output = ($output -join "`n")
+        }
+    } -ArgumentList $Docker, $Arguments
+
+    if (-not (Wait-Job $job -Timeout $TimeoutSeconds)) {
+        Stop-Job $job -ErrorAction SilentlyContinue
+        Remove-Job $job -Force -ErrorAction SilentlyContinue
+        return [pscustomobject]@{
+            ExitCode = 124
+            Output = "Docker command timed out"
+        }
+    }
+
+    $result = Receive-Job $job 2>&1
+    Remove-Job $job -Force -ErrorAction SilentlyContinue
+    return $result
+}
+
 Import-ProjectEnv
 
-$docker = Get-Command "docker" -ErrorAction SilentlyContinue
+$docker = Resolve-DockerCommand
 if (-not $docker) {
     throw "Docker is required to run telegram local api. Install Docker Desktop first."
 }
@@ -62,18 +106,23 @@ $dataDir = if ([System.IO.Path]::IsPathRooted($dataDirValue)) {
 New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
 $resolvedDataDir = (Resolve-Path $dataDir).Path
 
-$running = & docker inspect -f "{{.State.Running}}" $containerName 2>$null
-if ($LASTEXITCODE -eq 0 -and $running -eq "true") {
+$version = Invoke-DockerText -Docker $docker -Arguments @("version")
+if ($version.ExitCode -ne 0) {
+    throw "Docker Desktop is installed but the Docker engine is not running yet. Start Docker Desktop and try again."
+}
+
+$runningResult = Invoke-DockerText -Docker $docker -Arguments @("inspect", "-f", "{{.State.Running}}", $containerName)
+if ($runningResult.ExitCode -eq 0 -and $runningResult.Output.Trim() -eq "true") {
     Write-Output "telegram-local-api running port=$port container=$containerName limit=2000 MB"
     exit 0
 }
 
-$exists = & docker inspect -f "{{.Name}}" $containerName 2>$null
-if ($LASTEXITCODE -eq 0) {
-    & docker rm $containerName | Out-Null
+$existsResult = Invoke-DockerText -Docker $docker -Arguments @("inspect", "-f", "{{.Name}}", $containerName)
+if ($existsResult.ExitCode -eq 0) {
+    Invoke-DockerText -Docker $docker -Arguments @("rm", $containerName) | Out-Null
 }
 
-& docker run `
+& $docker run `
     -d `
     --name $containerName `
     -p "127.0.0.1:$port`:8081" `
