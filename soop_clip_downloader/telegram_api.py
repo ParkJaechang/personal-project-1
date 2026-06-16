@@ -71,10 +71,16 @@ class TelegramClient:
         token: str,
         transport: JsonTransport | None = None,
         api_base_url: str | None = None,
+        local_file_root: Path | None = None,
+        local_file_uri_base: str | None = None,
     ) -> None:
         self._token = token
         self._transport = transport or UrllibJsonTransport()
         self._api_base_url = (api_base_url or "https://api.telegram.org").rstrip("/")
+        self._local_file_root = Path(local_file_root).resolve() if local_file_root else None
+        self._local_file_uri_base = (
+            local_file_uri_base.rstrip("/") if local_file_uri_base else None
+        )
 
     def get_updates(self, *, offset: int | None = None, timeout_seconds: int = 30) -> dict:
         payload: dict[str, int] = {"timeout": timeout_seconds}
@@ -96,7 +102,7 @@ class TelegramClient:
     ) -> dict:
         payload = {
             "chat_id": chat_id,
-            "video": Path(file_path).resolve().as_uri(),
+            "video": self._file_uri_for_local_api(file_path),
             "supports_streaming": "true",
         }
         if caption:
@@ -125,6 +131,21 @@ class TelegramClient:
 
     def _method_url(self, method: str) -> str:
         return f"{self._api_base_url}/bot{self._token}/{method}"
+
+    def _file_uri_for_local_api(self, file_path: Path) -> str:
+        resolved_file = Path(file_path).resolve()
+        if not self._local_file_root or not self._local_file_uri_base:
+            return resolved_file.as_uri()
+
+        try:
+            relative_path = resolved_file.relative_to(self._local_file_root)
+        except ValueError as exc:
+            raise ValueError(
+                f"{resolved_file} is outside local file root {self._local_file_root}"
+            ) from exc
+
+        encoded_parts = [parse.quote(part) for part in relative_path.parts]
+        return f"{self._local_file_uri_base}/{'/'.join(encoded_parts)}"
 
 
 def _multipart_body(

@@ -18,6 +18,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(settings.download_dir, Path("downloads"))
         self.assertEqual(settings.max_telegram_upload_mb, 2000)
         self.assertIsNone(settings.telegram_api_base_url)
+        self.assertIsNone(settings.telegram_local_file_uri_base)
         self.assertEqual(settings.ytdlp_path, "yt-dlp")
         self.assertEqual(settings.ffmpeg_path, "ffmpeg")
 
@@ -29,6 +30,7 @@ class ConfigTests(unittest.TestCase):
                 "DOWNLOAD_DIR": "D:/clips",
                 "MAX_TELEGRAM_UPLOAD_MB": "100",
                 "TELEGRAM_API_BASE_URL": "http://127.0.0.1:8081",
+                "TELEGRAM_LOCAL_FILE_URI_BASE": "file:///telegram-files",
                 "YTDLP_PATH": "python -m yt_dlp",
                 "FFMPEG_PATH": "C:/tools/ffmpeg.exe",
             }
@@ -37,6 +39,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(settings.download_dir, Path("D:/clips"))
         self.assertEqual(settings.max_telegram_upload_mb, 100)
         self.assertEqual(settings.telegram_api_base_url, "http://127.0.0.1:8081")
+        self.assertEqual(settings.telegram_local_file_uri_base, "file:///telegram-files")
         self.assertEqual(settings.ytdlp_path, "python -m yt_dlp")
         self.assertEqual(settings.ffmpeg_path, "C:/tools/ffmpeg.exe")
 

@@ -96,15 +96,16 @@ if (-not $apiId -or -not $apiHash) {
 $containerName = Get-EnvValue -Name "TELEGRAM_LOCAL_API_CONTAINER" -Default "pp1-telegram-bot-api"
 $port = Get-EnvValue -Name "TELEGRAM_LOCAL_API_PORT" -Default "8081"
 $image = Get-EnvValue -Name "TELEGRAM_LOCAL_API_IMAGE" -Default "aiogram/telegram-bot-api:latest"
-$dataDirValue = Get-EnvValue -Name "TELEGRAM_LOCAL_API_DATA_DIR" -Default ".local/telegram-bot-api"
-$dataDir = if ([System.IO.Path]::IsPathRooted($dataDirValue)) {
-    $dataDirValue
+$dataVolume = Get-EnvValue -Name "TELEGRAM_LOCAL_API_DATA_VOLUME" -Default "pp1-telegram-bot-api-data"
+$downloadDirValue = Get-EnvValue -Name "DOWNLOAD_DIR" -Default "downloads"
+$downloadDir = if ([System.IO.Path]::IsPathRooted($downloadDirValue)) {
+    $downloadDirValue
 } else {
-    Join-Path $ProjectRoot $dataDirValue
+    Join-Path $ProjectRoot $downloadDirValue
 }
 
-New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
-$resolvedDataDir = (Resolve-Path $dataDir).Path
+New-Item -ItemType Directory -Force -Path $downloadDir | Out-Null
+$resolvedDownloadDir = (Resolve-Path $downloadDir).Path
 
 $version = Invoke-DockerText -Docker $docker -Arguments @("version")
 if ($version.ExitCode -ne 0) {
@@ -126,14 +127,14 @@ if ($existsResult.ExitCode -eq 0) {
     -d `
     --name $containerName `
     -p "127.0.0.1:$port`:8081" `
-    -v "${resolvedDataDir}:/var/lib/telegram-bot-api" `
-    $image `
-    "--api-id=$apiId" `
-    "--api-hash=$apiHash" `
-    "--local" `
-    "--dir=/var/lib/telegram-bot-api" `
-    "--http-ip-address=0.0.0.0" `
-    "--http-port=8081" | Out-Null
+    -v "${dataVolume}:/var/lib/telegram-bot-api" `
+    -v "${resolvedDownloadDir}:/telegram-files:ro" `
+    -e "TELEGRAM_API_ID=$apiId" `
+    -e "TELEGRAM_API_HASH=$apiHash" `
+    -e "TELEGRAM_LOCAL=1" `
+    -e "TELEGRAM_HTTP_IP_ADDRESS=0.0.0.0" `
+    -e "TELEGRAM_HTTP_PORT=8081" `
+    $image | Out-Null
 
 if ($LASTEXITCODE -ne 0) {
     throw "Failed to start telegram local api container."

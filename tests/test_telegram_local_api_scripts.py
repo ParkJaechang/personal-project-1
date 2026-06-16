@@ -8,8 +8,11 @@ class TelegramLocalApiScriptTests(unittest.TestCase):
 
         self.assertIn("TELEGRAM_API_ID", script)
         self.assertIn("TELEGRAM_API_HASH", script)
-        self.assertIn("--local", script)
+        self.assertIn("TELEGRAM_LOCAL=1", script)
+        self.assertIn("TELEGRAM_HTTP_IP_ADDRESS=0.0.0.0", script)
         self.assertIn("aiogram/telegram-bot-api", script)
+        self.assertIn("pp1-telegram-bot-api-data", script)
+        self.assertIn("/telegram-files:ro", script)
         self.assertIn("2000 MB", script)
         self.assertIn("Resolve-DockerCommand", script)
         self.assertIn("Invoke-DockerText", script)

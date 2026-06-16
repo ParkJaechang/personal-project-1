@@ -109,6 +109,44 @@ class TelegramClientTests(unittest.TestCase):
                 ],
             )
 
+    def test_send_video_path_maps_download_dir_to_container_uri(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            file_path = root / "nested" / "clip one.mp4"
+            file_path.parent.mkdir()
+            file_path.write_bytes(b"video")
+            transport = FakeTransport()
+            client = TelegramClient(
+                token="123:abc",
+                transport=transport,
+                local_file_root=root,
+                local_file_uri_base="file:///telegram-files",
+            )
+
+            client.send_video_path(chat_id=100, file_path=file_path, caption="done")
+
+            self.assertEqual(
+                transport.posts[0][1]["video"],
+                "file:///telegram-files/nested/clip%20one.mp4",
+            )
+
+    def test_send_video_path_rejects_files_outside_mapped_root(self):
+        with tempfile.TemporaryDirectory() as root_dir, tempfile.TemporaryDirectory() as other_dir:
+            file_path = Path(other_dir) / "clip.mp4"
+            file_path.write_bytes(b"video")
+            transport = FakeTransport()
+            client = TelegramClient(
+                token="123:abc",
+                transport=transport,
+                local_file_root=Path(root_dir),
+                local_file_uri_base="file:///telegram-files",
+            )
+
+            with self.assertRaises(ValueError):
+                client.send_video_path(chat_id=100, file_path=file_path, caption="done")
+
+            self.assertEqual(transport.posts, [])
+
     def test_send_video_file_uses_multipart_upload(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = Path(temp_dir) / "clip.mp4"

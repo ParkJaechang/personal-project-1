@@ -34,6 +34,8 @@ def build_runtime(
     telegram = telegram or TelegramClient(
         token=settings.telegram_bot_token,
         api_base_url=settings.telegram_api_base_url,
+        local_file_root=settings.download_dir,
+        local_file_uri_base=settings.telegram_local_file_uri_base,
     )
     queue = queue or InMemoryJobQueue()
     app = ClipBotApp(

@@ -19,6 +19,7 @@ class Settings:
     download_dir: Path
     max_telegram_upload_mb: int
     telegram_api_base_url: str | None
+    telegram_local_file_uri_base: str | None
     ytdlp_path: str
     ffmpeg_path: str
 
@@ -38,6 +39,9 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
             source, "MAX_TELEGRAM_UPLOAD_MB", default=2000
         ),
         telegram_api_base_url=_optional_non_empty(source, "TELEGRAM_API_BASE_URL"),
+        telegram_local_file_uri_base=_optional_non_empty(
+            source, "TELEGRAM_LOCAL_FILE_URI_BASE"
+        ),
         ytdlp_path=source.get("YTDLP_PATH", "yt-dlp"),
         ffmpeg_path=source.get("FFMPEG_PATH", "ffmpeg"),
     )

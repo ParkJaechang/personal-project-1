@@ -50,6 +50,7 @@ class RuntimeTests(unittest.TestCase):
                 download_dir=Path(temp_dir),
                 max_telegram_upload_mb=50,
                 telegram_api_base_url=None,
+                telegram_local_file_uri_base=None,
                 ytdlp_path="yt-dlp",
                 ffmpeg_path="ffmpeg",
             )
