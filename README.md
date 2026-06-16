@@ -80,6 +80,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 restart
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\bots.ps1 logs soop
 ```
 
+Create one desktop shortcut for the GUI bot manager:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\create-bot-manager-shortcut.ps1
+```
+
+Then open `Bot Manager` from the desktop to start, stop, restart, refresh, or open logs/downloads for registered bots.
+
 Or run the Python package directly after exporting the environment variables:
 
 ```powershell
