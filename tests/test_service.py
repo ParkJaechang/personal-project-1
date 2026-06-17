@@ -1,9 +1,11 @@
 from pathlib import Path
 import threading
 import time
+import tempfile
 import unittest
 
 from soop_clip_downloader.downloader import DownloadError, DownloadProgress, DownloadResult
+from soop_clip_downloader.delivery import DeliveryOutcome
 from soop_clip_downloader.jobs import InMemoryJobQueue, JobStatus
 from soop_clip_downloader.service import (
     DownloadWorker,
@@ -84,6 +86,24 @@ class WaitingDownloader:
             if progress_callback:
                 progress_callback(DownloadProgress(percent=1.0, eta="01:00", speed="1MiB/s"))
             time.sleep(0.01)
+
+
+class StaticFileDownloader:
+    def __init__(self, file_path: Path):
+        self.file_path = file_path
+
+    def download(self, job, progress_callback=None):
+        return DownloadResult(job=job, file_path=self.file_path, stdout="", stderr="")
+
+
+class OutcomeDeliverer:
+    def __init__(self, outcome: DeliveryOutcome):
+        self.outcome = outcome
+        self.delivered_files = []
+
+    def deliver(self, *, chat_id: int, job_id: int, file_path):
+        self.delivered_files.append((chat_id, job_id, file_path))
+        return self.outcome
 
 
 class ServiceTests(unittest.TestCase):
@@ -228,6 +248,44 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(job.status, JobStatus.CANCELLED)
         self.assertEqual(job.error, "cancelled by user")
         self.assertIn((100, "Download cancelled #1"), telegram.messages)
+
+    def test_worker_deletes_local_file_after_successful_video_delivery(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_path = Path(temp_dir) / "clip.mp4"
+            file_path.write_bytes(b"video")
+            queue = InMemoryJobQueue()
+            queue.enqueue("https://vod.sooplive.com/player/195880425", chat_id=100)
+            worker = DownloadWorker(
+                queue=queue,
+                downloader=StaticFileDownloader(file_path),
+                telegram=RecordingTelegram(),
+                deliverer=OutcomeDeliverer(
+                    DeliveryOutcome(method="telegram_direct", message="sent")
+                ),
+            )
+
+            self.assertTrue(worker.process_next())
+
+            self.assertFalse(file_path.exists())
+
+    def test_worker_keeps_local_file_when_delivery_only_reports_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_path = Path(temp_dir) / "clip.mp4"
+            file_path.write_bytes(b"video")
+            queue = InMemoryJobQueue()
+            queue.enqueue("https://vod.sooplive.com/player/195880425", chat_id=100)
+            worker = DownloadWorker(
+                queue=queue,
+                downloader=StaticFileDownloader(file_path),
+                telegram=RecordingTelegram(),
+                deliverer=OutcomeDeliverer(
+                    DeliveryOutcome(method="saved_path_only", message=str(file_path))
+                ),
+            )
+
+            self.assertTrue(worker.process_next())
+
+            self.assertTrue(file_path.exists())
 
 
 if __name__ == "__main__":

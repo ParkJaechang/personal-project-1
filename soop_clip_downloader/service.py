@@ -223,11 +223,18 @@ class DownloadWorker:
                 f"({_file_size_mb(result.file_path):.1f} MB). Sending to Telegram..."
             ),
         )
-        self._deliverer.deliver(
+        outcome = self._deliverer.deliver(
             chat_id=job.chat_id,
             job_id=job.id,
             file_path=result.file_path,
         )
+        if _should_delete_local_file(outcome):
+            _delete_local_file(
+                telegram=self._telegram,
+                chat_id=job.chat_id,
+                job_id=job.id,
+                file_path=result.file_path,
+            )
 
     def _cancel_aware_progress_callback(self, progress: "TelegramProgressReporter"):
         def update(download_progress: DownloadProgress) -> None:
@@ -334,3 +341,17 @@ def _file_size_mb(file_path) -> float:
         return file_path.stat().st_size / (1024 * 1024)
     except OSError:
         return 0.0
+
+
+def _should_delete_local_file(outcome: object) -> bool:
+    return getattr(outcome, "method", None) in {"telegram_direct", "telegram_local_api"}
+
+
+def _delete_local_file(*, telegram: TelegramGateway, chat_id: int, job_id: int, file_path) -> None:
+    try:
+        file_path.unlink(missing_ok=True)
+    except OSError as exc:
+        telegram.send_message(
+            chat_id,
+            f"Local cleanup failed #{job_id}: {exc}",
+        )

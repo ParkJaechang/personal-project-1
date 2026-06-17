@@ -100,6 +100,8 @@ Expected Telegram replies:
 4. `Download finished #1: ... Sending to Telegram...`
 5. Either the uploaded MP4 or `Download complete #1: <local path>`
 
+When the MP4 is successfully uploaded to Telegram, the local MP4 copy is deleted from the PC. If Telegram upload fails or the file is too large and the bot reports only a saved path, the local file is kept so the path can still be used.
+
 To cancel the active download and clear queued jobs while the service keeps running, send one of:
 
 ```text
