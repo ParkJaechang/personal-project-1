@@ -21,7 +21,7 @@ class BotManagerGuiTests(unittest.TestCase):
         self.assertTrue(callable(module.run_bot_command))
         self.assertTrue(callable(module.open_path))
         self.assertTrue(hasattr(module, "BotManagerApp"))
-        self.assertEqual(module.load_manifest()["bots"]["soop"]["displayName"], "soop clip")
+        self.assertEqual(module.load_manifest()["bots"]["soop"]["displayName"], "Clip")
 
     def test_desktop_launcher_uses_pythonw_and_gui_module(self):
         launcher = Path("tools/bot-manager-gui.ps1").read_text(encoding="utf-8")

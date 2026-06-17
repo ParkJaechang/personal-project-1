@@ -1,7 +1,7 @@
 {
   "bots": {
     "soop": {
-      "displayName": "soop clip",
+      "displayName": "Clip",
       "workingDirectory": ".",
       "startScript": "scripts/run-service.ps1",
       "processMatch": "soop_clip_downloader",
