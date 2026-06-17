@@ -175,15 +175,22 @@ class TelegramProgressReporter:
         self._min_percent_delta = min_percent_delta
         self._message_id: int | None = None
         self._last_percent: float | None = None
+        self._disabled = False
 
     def start(self) -> None:
-        response = self._telegram.send_message(
-            self._chat_id,
-            f"Download progress #{self._job_id}: starting",
-        )
+        try:
+            response = self._telegram.send_message(
+                self._chat_id,
+                f"Download progress #{self._job_id}: starting",
+            )
+        except Exception:
+            self._disabled = True
+            return
         self._message_id = _message_id_from_response(response)
 
     def update(self, progress: DownloadProgress) -> None:
+        if self._disabled:
+            return
         if not self._should_report(progress.percent):
             return
         self._last_percent = progress.percent
@@ -203,14 +210,22 @@ class TelegramProgressReporter:
         return percent - self._last_percent >= self._min_percent_delta
 
     def _publish(self, text: str) -> None:
-        if self._message_id is not None and hasattr(self._telegram, "edit_message_text"):
-            self._telegram.edit_message_text(
-                chat_id=self._chat_id,
-                message_id=self._message_id,
-                text=text,
-            )
+        if self._disabled:
             return
-        self._telegram.send_message(self._chat_id, text)
+        if self._message_id is not None and hasattr(self._telegram, "edit_message_text"):
+            try:
+                self._telegram.edit_message_text(
+                    chat_id=self._chat_id,
+                    message_id=self._message_id,
+                    text=text,
+                )
+            except Exception:
+                self._disabled = True
+            return
+        try:
+            self._telegram.send_message(self._chat_id, text)
+        except Exception:
+            self._disabled = True
 
 
 def _title_no_from_url(url: str) -> str:

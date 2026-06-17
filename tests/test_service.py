@@ -67,6 +67,11 @@ class FailingDownloader:
         raise DownloadError("network down")
 
 
+class EditFailingTelegram(RecordingTelegram):
+    def edit_message_text(self, chat_id: int, message_id: int, text: str):
+        raise RuntimeError("edit failed")
+
+
 class ServiceTests(unittest.TestCase):
     def test_extract_text_updates_ignores_non_text_messages(self):
         response = {
@@ -167,6 +172,25 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(
             telegram.messages[-1],
             (100, "Download failed #1: network down"),
+        )
+
+    def test_progress_edit_failure_does_not_stop_download(self):
+        queue = InMemoryJobQueue()
+        queue.enqueue("https://vod.sooplive.com/player/195880425", chat_id=100)
+        telegram = EditFailingTelegram()
+        worker = DownloadWorker(
+            queue=queue,
+            downloader=SucceedingDownloader(),
+            telegram=telegram,
+        )
+
+        self.assertTrue(worker.process_next())
+
+        job = queue.get(1)
+        self.assertEqual(job.status, JobStatus.SUCCEEDED)
+        self.assertIn(
+            (100, "Download complete #1: downloads\\clip.mp4"),
+            telegram.messages,
         )
 
 
