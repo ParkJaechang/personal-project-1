@@ -94,6 +94,12 @@ class TelegramClient:
             {"chat_id": chat_id, "text": text},
         )
 
+    def edit_message_text(self, chat_id: int, message_id: int, text: str) -> dict:
+        return self._transport.post_json(
+            self._method_url("editMessageText"),
+            {"chat_id": chat_id, "message_id": message_id, "text": text},
+        )
+
     def send_video_path(
         self,
         chat_id: int,

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Protocol
 from urllib.parse import urlsplit
 
+from soop_clip_downloader.downloader import DownloadProgress
 from soop_clip_downloader.delivery import PathOnlyDeliverer
 from soop_clip_downloader.downloader import DownloadError
 
@@ -45,7 +46,7 @@ class QueueLike(Protocol):
 
 
 class DownloaderLike(Protocol):
-    def download(self, job):
+    def download(self, job, progress_callback=None):
         """Download a queued job."""
 
 
@@ -124,11 +125,18 @@ class DownloadWorker:
             job.chat_id,
             f"Starting download #{job.id}: {_title_no_from_url(job.url)}",
         )
+        progress = TelegramProgressReporter(
+            telegram=self._telegram,
+            chat_id=job.chat_id,
+            job_id=job.id,
+        )
+        progress.start()
         try:
-            result = self._downloader.download(job)
+            result = self._downloader.download(job, progress_callback=progress.update)
         except DownloadError as exc:
             message = str(exc)
             self._queue.mark_failed(job.id, message)
+            progress.fail(message)
             self._telegram.send_message(
                 job.chat_id,
                 f"Download failed #{job.id}: {message}",
@@ -136,6 +144,14 @@ class DownloadWorker:
             return True
 
         self._queue.mark_succeeded(job.id, result.file_path)
+        progress.complete()
+        self._telegram.send_message(
+            job.chat_id,
+            (
+                f"Download finished #{job.id}: {result.file_path} "
+                f"({_file_size_mb(result.file_path):.1f} MB). Sending to Telegram..."
+            ),
+        )
         self._deliverer.deliver(
             chat_id=job.chat_id,
             job_id=job.id,
@@ -144,5 +160,84 @@ class DownloadWorker:
         return True
 
 
+class TelegramProgressReporter:
+    def __init__(
+        self,
+        *,
+        telegram: TelegramGateway,
+        chat_id: int,
+        job_id: int,
+        min_percent_delta: float = 5.0,
+    ) -> None:
+        self._telegram = telegram
+        self._chat_id = chat_id
+        self._job_id = job_id
+        self._min_percent_delta = min_percent_delta
+        self._message_id: int | None = None
+        self._last_percent: float | None = None
+
+    def start(self) -> None:
+        response = self._telegram.send_message(
+            self._chat_id,
+            f"Download progress #{self._job_id}: starting",
+        )
+        self._message_id = _message_id_from_response(response)
+
+    def update(self, progress: DownloadProgress) -> None:
+        if not self._should_report(progress.percent):
+            return
+        self._last_percent = progress.percent
+        self._publish(_format_progress_message(self._job_id, progress))
+
+    def complete(self) -> None:
+        self._publish(f"Download progress #{self._job_id}: complete")
+
+    def fail(self, message: str) -> None:
+        self._publish(f"Download progress #{self._job_id}: failed - {message}")
+
+    def _should_report(self, percent: float) -> bool:
+        if self._last_percent is None:
+            return True
+        if percent >= 100:
+            return True
+        return percent - self._last_percent >= self._min_percent_delta
+
+    def _publish(self, text: str) -> None:
+        if self._message_id is not None and hasattr(self._telegram, "edit_message_text"):
+            self._telegram.edit_message_text(
+                chat_id=self._chat_id,
+                message_id=self._message_id,
+                text=text,
+            )
+            return
+        self._telegram.send_message(self._chat_id, text)
+
+
 def _title_no_from_url(url: str) -> str:
     return urlsplit(url).path.rsplit("/", maxsplit=1)[-1]
+
+
+def _message_id_from_response(response: object) -> int | None:
+    if not isinstance(response, dict):
+        return None
+    result = response.get("result")
+    if not isinstance(result, dict):
+        return None
+    message_id = result.get("message_id")
+    return message_id if isinstance(message_id, int) else None
+
+
+def _format_progress_message(job_id: int, progress: DownloadProgress) -> str:
+    parts = [f"Download progress #{job_id}: {progress.percent:.1f}%"]
+    if progress.eta:
+        parts.append(f"ETA {progress.eta}")
+    if progress.speed:
+        parts.append(progress.speed)
+    return " | ".join(parts)
+
+
+def _file_size_mb(file_path) -> float:
+    try:
+        return file_path.stat().st_size / (1024 * 1024)
+    except OSError:
+        return 0.0

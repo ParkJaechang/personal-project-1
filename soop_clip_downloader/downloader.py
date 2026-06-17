@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import re
 import subprocess
 from typing import Callable
 
@@ -22,6 +23,7 @@ def build_ytdlp_command(
     output_template = str(download_dir / "%(title)s [%(id)s].%(ext)s")
     return [
         ytdlp_path,
+        "--newline",
         "--ffmpeg-location",
         ffmpeg_path,
         "-f",
@@ -43,6 +45,13 @@ class CommandResult:
 
 
 @dataclass(frozen=True)
+class DownloadProgress:
+    percent: float
+    eta: str | None
+    speed: str | None
+
+
+@dataclass(frozen=True)
 class DownloadResult:
     job: DownloadJob
     file_path: Path
@@ -54,21 +63,57 @@ class DownloadError(RuntimeError):
     """Raised when yt-dlp fails or no output file can be located."""
 
 
-CommandRunner = Callable[[list[str]], CommandResult]
+ProgressCallback = Callable[[DownloadProgress], None]
+CommandRunner = Callable[[list[str], ProgressCallback | None], CommandResult]
+
+
+_PERCENT_RE = re.compile(r"^\[download\]\s+(?P<percent>\d+(?:\.\d+)?)%", re.IGNORECASE)
+_SPEED_RE = re.compile(r"\bat\s+(?P<speed>\S+/s)", re.IGNORECASE)
+_ETA_RE = re.compile(r"\bETA\s+(?P<eta>\S+)", re.IGNORECASE)
+
+
+def parse_ytdlp_progress_line(line: str) -> DownloadProgress | None:
+    line = line.strip()
+    match = _PERCENT_RE.search(line)
+    if not match:
+        return None
+
+    speed = _SPEED_RE.search(line)
+    eta = _ETA_RE.search(line)
+    return DownloadProgress(
+        percent=float(match.group("percent")),
+        eta=eta.group("eta") if eta else None,
+        speed=speed.group("speed") if speed else None,
+    )
 
 
 class SubprocessCommandRunner:
-    def __call__(self, command: list[str]) -> CommandResult:
-        completed = subprocess.run(
+    def __call__(
+        self,
+        command: list[str],
+        progress_callback: ProgressCallback | None = None,
+    ) -> CommandResult:
+        completed = subprocess.Popen(
             command,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
-            check=False,
         )
+        output_lines: list[str] = []
+        assert completed.stdout is not None
+        for line in completed.stdout:
+            output_lines.append(line)
+            if progress_callback:
+                progress = parse_ytdlp_progress_line(line)
+                if progress:
+                    progress_callback(progress)
+
+        returncode = completed.wait()
+        stdout = "".join(output_lines)
         return CommandResult(
-            returncode=completed.returncode,
-            stdout=completed.stdout,
-            stderr=completed.stderr,
+            returncode=returncode,
+            stdout=stdout,
+            stderr="",
         )
 
 
@@ -86,7 +131,11 @@ class YtdlpDownloader:
         self._ffmpeg_path = ffmpeg_path
         self._command_runner = command_runner or SubprocessCommandRunner()
 
-    def download(self, job: DownloadJob) -> DownloadResult:
+    def download(
+        self,
+        job: DownloadJob,
+        progress_callback: ProgressCallback | None = None,
+    ) -> DownloadResult:
         self._download_dir.mkdir(parents=True, exist_ok=True)
         before = set(self._download_dir.glob("*.mp4"))
         command = build_ytdlp_command(
@@ -95,7 +144,7 @@ class YtdlpDownloader:
             ytdlp_path=self._ytdlp_path,
             ffmpeg_path=self._ffmpeg_path,
         )
-        result = self._command_runner(command)
+        result = self._command_runner(command, progress_callback)
         if result.returncode != 0:
             raise DownloadError(_best_error_message(result))
 

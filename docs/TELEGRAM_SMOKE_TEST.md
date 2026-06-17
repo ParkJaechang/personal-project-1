@@ -96,7 +96,9 @@ Expected Telegram replies:
 
 1. `Queued download: {title_no}`
 2. `Starting download #1: {title_no}`
-3. Either the uploaded MP4 or `Download complete #1: <local path>`
+3. `Download progress #1: starting`, then edits with percent, ETA, and speed
+4. `Download finished #1: ... Sending to Telegram...`
+5. Either the uploaded MP4 or `Download complete #1: <local path>`
 
 Catch URLs such as `https://vod.sooplive.com/player/{title_no}/catch` are intentionally rejected.
 

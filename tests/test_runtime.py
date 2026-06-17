@@ -11,13 +11,21 @@ from soop_clip_downloader.runtime import build_runtime, main as runtime_main
 class RecordingTelegram:
     def __init__(self):
         self.messages = []
+        self.edits = []
         self.video_files = []
+        self.next_message_id = 10
 
     def get_updates(self, *, offset=None, timeout_seconds=30):
         return {"ok": True, "result": []}
 
-    def send_message(self, chat_id: int, text: str) -> None:
+    def send_message(self, chat_id: int, text: str):
         self.messages.append((chat_id, text))
+        self.next_message_id += 1
+        return {"ok": True, "result": {"message_id": self.next_message_id}}
+
+    def edit_message_text(self, chat_id: int, message_id: int, text: str):
+        self.edits.append((chat_id, message_id, text))
+        return {"ok": True, "result": {"message_id": message_id}}
 
     def send_video_file(self, chat_id: int, file_path: Path, caption: str) -> None:
         self.video_files.append((chat_id, file_path, caption))
@@ -30,7 +38,7 @@ class StaticDownloader:
     def __init__(self, file_path: Path):
         self.file_path = file_path
 
-    def download(self, job):
+    def download(self, job, progress_callback=None):
         return DownloadResult(job=job, file_path=self.file_path, stdout="", stderr="")
 
 
@@ -72,7 +80,13 @@ class RuntimeTests(unittest.TestCase):
                 [
                     (100, "Queued download: 195880425"),
                     (100, "Starting download #1: 195880425"),
+                    (100, "Download progress #1: starting"),
+                    (100, f"Download finished #1: {file_path} (0.0 MB). Sending to Telegram..."),
                 ],
+            )
+            self.assertEqual(
+                telegram.edits,
+                [(100, 13, "Download progress #1: complete")],
             )
             self.assertEqual(telegram.video_files, [(100, file_path, "SOOP clip #1")])
 

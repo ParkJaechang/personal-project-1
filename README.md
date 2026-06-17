@@ -4,7 +4,7 @@ Windows-friendly Telegram bot service for downloading SOOP User Clip links at up
 
 ## Goal
 
-Send a SOOP User Clip URL from a phone to a Telegram bot. This PC receives the message, downloads the clip with `yt-dlp` at the best available quality up to 1080p, and reports or sends the result back through Telegram.
+Send a SOOP User Clip URL from a phone to a Telegram bot. This PC receives the message, downloads the clip with `yt-dlp` at the best available quality up to 1080p, reports download progress with percent, ETA, and speed, and reports or sends the result back through Telegram.
 
 Supported URL shape:
 

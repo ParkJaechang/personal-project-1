@@ -1,7 +1,7 @@
 from pathlib import Path
 import unittest
 
-from soop_clip_downloader.downloader import DownloadError, DownloadResult
+from soop_clip_downloader.downloader import DownloadError, DownloadProgress, DownloadResult
 from soop_clip_downloader.jobs import InMemoryJobQueue, JobStatus
 from soop_clip_downloader.service import (
     DownloadWorker,
@@ -15,13 +15,21 @@ class RecordingTelegram:
         self.updates = list(updates or [])
         self.offsets = []
         self.messages = []
+        self.edits = []
+        self.next_message_id = 10
 
     def get_updates(self, *, offset=None, timeout_seconds=30):
         self.offsets.append((offset, timeout_seconds))
         return {"ok": True, "result": self.updates}
 
-    def send_message(self, chat_id: int, text: str) -> None:
+    def send_message(self, chat_id: int, text: str):
         self.messages.append((chat_id, text))
+        self.next_message_id += 1
+        return {"ok": True, "result": {"message_id": self.next_message_id}}
+
+    def edit_message_text(self, chat_id: int, message_id: int, text: str):
+        self.edits.append((chat_id, message_id, text))
+        return {"ok": True, "result": {"message_id": message_id}}
 
 
 class RecordingApp:
@@ -42,7 +50,10 @@ class OneJobWorker:
 
 
 class SucceedingDownloader:
-    def download(self, job):
+    def download(self, job, progress_callback=None):
+        if progress_callback:
+            progress_callback(DownloadProgress(percent=12.0, eta="00:30", speed="4MiB/s"))
+            progress_callback(DownloadProgress(percent=18.0, eta="00:25", speed="5MiB/s"))
         return DownloadResult(
             job=job,
             file_path=Path("downloads/clip.mp4"),
@@ -52,7 +63,7 @@ class SucceedingDownloader:
 
 
 class FailingDownloader:
-    def download(self, job):
+    def download(self, job, progress_callback=None):
         raise DownloadError("network down")
 
 
@@ -124,7 +135,17 @@ class ServiceTests(unittest.TestCase):
             telegram.messages,
             [
                 (100, "Starting download #1: 195880425"),
+                (100, "Download progress #1: starting"),
+                (100, "Download finished #1: downloads\\clip.mp4 (0.0 MB). Sending to Telegram..."),
                 (100, "Download complete #1: downloads\\clip.mp4"),
+            ],
+        )
+        self.assertEqual(
+            telegram.edits,
+            [
+                (100, 12, "Download progress #1: 12.0% | ETA 00:30 | 4MiB/s"),
+                (100, 12, "Download progress #1: 18.0% | ETA 00:25 | 5MiB/s"),
+                (100, 12, "Download progress #1: complete"),
             ],
         )
 

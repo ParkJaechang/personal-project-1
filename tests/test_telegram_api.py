@@ -54,6 +54,22 @@ class TelegramClientTests(unittest.TestCase):
 
         self.assertEqual(transport.posts[0][1], {"chat_id": 100, "text": "queued"})
 
+    def test_edit_message_text_posts_chat_and_message_id(self):
+        transport = FakeTransport()
+        client = TelegramClient(token="123:abc", transport=transport)
+
+        client.edit_message_text(chat_id=100, message_id=55, text="progress")
+
+        self.assertEqual(
+            transport.posts,
+            [
+                (
+                    "https://api.telegram.org/bot123:abc/editMessageText",
+                    {"chat_id": 100, "message_id": 55, "text": "progress"},
+                )
+            ],
+        )
+
     def test_local_api_base_url_is_trimmed(self):
         transport = FakeTransport()
         client = TelegramClient(
