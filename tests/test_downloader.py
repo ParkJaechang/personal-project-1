@@ -1,4 +1,5 @@
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 
@@ -6,6 +7,7 @@ from soop_clip_downloader.downloader import (
     CommandResult,
     DownloadProgress,
     DownloadError,
+    SubprocessCommandRunner,
     YtdlpDownloader,
     build_ytdlp_command,
     parse_ytdlp_progress_line,
@@ -50,6 +52,20 @@ class DownloaderTests(unittest.TestCase):
 
     def test_ignores_non_progress_ytdlp_line(self):
         self.assertIsNone(parse_ytdlp_progress_line("[download] Destination: clip.mp4"))
+
+    def test_subprocess_runner_tolerates_undecodable_output(self):
+        runner = SubprocessCommandRunner()
+
+        result = runner(
+            [
+                sys.executable,
+                "-c",
+                "import sys; sys.stdout.buffer.write(b'\\xed')",
+            ],
+            None,
+        )
+
+        self.assertEqual(result.returncode, 0)
 
     def test_runner_returns_newest_mp4_after_success(self):
         with tempfile.TemporaryDirectory() as temp_dir:

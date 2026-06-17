@@ -121,15 +121,19 @@ class SubprocessCommandRunner:
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            errors="replace",
         )
         output_lines: list[str] = []
         assert completed.stdout is not None
-        for line in completed.stdout:
-            output_lines.append(line)
-            if progress_callback:
-                progress = parse_ytdlp_progress_line(line)
-                if progress:
-                    progress_callback(progress)
+        try:
+            for line in completed.stdout:
+                output_lines.append(line)
+                if progress_callback:
+                    progress = parse_ytdlp_progress_line(line)
+                    if progress:
+                        progress_callback(progress)
+        finally:
+            completed.stdout.close()
 
         returncode = completed.wait()
         stdout = "".join(output_lines)
