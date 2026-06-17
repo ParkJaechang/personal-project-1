@@ -15,7 +15,14 @@ TOOL_ROOT = PROJECT_ROOT / "tools"
 MANIFEST_PATH = TOOL_ROOT / "bots.json"
 BOT_SCRIPT = TOOL_ROOT / "bots.ps1"
 COMMAND_TIMEOUT_SECONDS = 60
-APP_NAME = "soop tools"
+APP_NAME = "app manager"
+
+STATUS_COLORS = {
+    "running": ("#107c41", "#ffffff"),
+    "stopped": ("#8a2f0b", "#ffffff"),
+    "ready": ("#5f6368", "#ffffff"),
+    "error": ("#b3261e", "#ffffff"),
+}
 
 
 def load_manifest(path: Path = MANIFEST_PATH) -> dict:
@@ -105,12 +112,30 @@ def format_result(command: str, result: subprocess.CompletedProcess[str]) -> str
     return "\n".join(parts).strip()
 
 
+def status_kind_from_text(text: str) -> str:
+    lowered = text.lower()
+    if "running" in lowered:
+        return "running"
+    if "stopped" in lowered:
+        return "stopped"
+    return "ready"
+
+
+def status_text(kind: str) -> str:
+    return {
+        "running": "Running",
+        "stopped": "Stopped",
+        "ready": "Ready",
+        "error": "Error",
+    }.get(kind, "Ready")
+
+
 class BotManagerApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(APP_NAME)
-        self.geometry("760x500")
-        self.minsize(640, 420)
+        self.geometry("840x540")
+        self.minsize(760, 460)
 
         self.manifest = load_manifest()
         self.bot_names = sorted(self.manifest.get("bots", {}).keys())
@@ -125,49 +150,107 @@ class BotManagerApp(tk.Tk):
 
     def _build_styles(self) -> None:
         style = ttk.Style(self)
-        style.configure("Status.TLabel", padding=(10, 4))
-        style.configure("Toolbar.TFrame", padding=12)
+        style.configure(".", font=("Segoe UI", 9))
+        style.configure("Root.TFrame", background="#f5f5f5")
+        style.configure("Panel.TFrame", background="#ffffff")
+        style.configure("Title.TLabel", font=("Segoe UI Semibold", 17), background="#ffffff")
+        style.configure("AppTitle.TLabel", font=("Segoe UI Semibold", 16), background="#ffffff")
+        style.configure("Section.TLabel", font=("Segoe UI Semibold", 10), background="#ffffff")
+        style.configure("Muted.TLabel", foreground="#666666", background="#ffffff")
+        style.configure("Panel.TButton", padding=(14, 7))
+        style.configure("Primary.TButton", padding=(14, 7))
 
     def _build_layout(self) -> None:
-        toolbar = ttk.Frame(self, style="Toolbar.TFrame")
-        toolbar.pack(fill=tk.X)
+        root = ttk.Frame(self, padding=12, style="Root.TFrame")
+        root.pack(fill=tk.BOTH, expand=True)
 
-        ttk.Label(toolbar, text="Bot").grid(row=0, column=0, sticky="w")
-        self.bot_select = ttk.Combobox(
-            toolbar,
-            textvariable=self.bot_var,
-            values=self.bot_names,
-            state="readonly",
-            width=18,
+        header = ttk.Frame(root, padding=(14, 12), style="Panel.TFrame")
+        header.pack(fill=tk.X, pady=(0, 12))
+        ttk.Label(header, text=APP_NAME, style="Title.TLabel").pack(side=tk.LEFT)
+        ttk.Label(
+            header,
+            text="Start, stop, and inspect local services",
+            style="Muted.TLabel",
+        ).pack(side=tk.LEFT, padx=(12, 0))
+
+        main = ttk.PanedWindow(root, orient=tk.HORIZONTAL)
+        main.pack(fill=tk.BOTH, expand=True)
+
+        nav = ttk.Frame(main, padding=12, style="Panel.TFrame")
+        main.add(nav, weight=0)
+        ttk.Label(nav, text="Apps", style="Section.TLabel").pack(anchor="w", pady=(0, 8))
+        self.app_list = tk.Listbox(
+            nav,
+            activestyle="none",
+            borderwidth=0,
+            exportselection=False,
+            font=("Segoe UI", 10),
+            height=8,
+            highlightthickness=1,
+            relief=tk.FLAT,
+            selectbackground="#dbeafe",
+            selectforeground="#111111",
+            width=24,
         )
-        self.bot_select.grid(row=1, column=0, sticky="ew", padx=(0, 10))
-        self.bot_select.bind("<<ComboboxSelected>>", lambda _event: self.refresh_status())
+        for bot in self.bot_names:
+            self.app_list.insert(tk.END, self._display_name_for_bot(bot))
+        self.app_list.pack(fill=tk.X)
+        if self.bot_names:
+            self.app_list.selection_set(0)
+        self.app_list.bind("<<ListboxSelect>>", self._on_app_selected)
 
-        display_name = self._selected_display_name()
-        self.display_label = ttk.Label(toolbar, text=display_name)
-        self.display_label.grid(row=1, column=1, sticky="w", padx=(0, 14))
+        ttk.Label(
+            nav,
+            text="Select an app, then use the controls on the right.",
+            style="Muted.TLabel",
+            wraplength=180,
+        ).pack(anchor="w", pady=(14, 0))
 
-        self.status_label = ttk.Label(toolbar, textvariable=self.status_var, style="Status.TLabel")
-        self.status_label.grid(row=1, column=2, sticky="e")
+        detail = ttk.Frame(main, padding=14, style="Panel.TFrame")
+        main.add(detail, weight=1)
 
-        toolbar.columnconfigure(1, weight=1)
+        title_row = ttk.Frame(detail, style="Panel.TFrame")
+        title_row.pack(fill=tk.X)
+        self.display_label = ttk.Label(
+            title_row,
+            text=self._selected_display_name(),
+            style="AppTitle.TLabel",
+        )
+        self.display_label.pack(side=tk.LEFT)
+        self.status_badge = tk.Label(
+            title_row,
+            textvariable=self.status_var,
+            padx=12,
+            pady=4,
+            borderwidth=0,
+            font=("Segoe UI Semibold", 9),
+        )
+        self.status_badge.pack(side=tk.RIGHT)
+        self._set_status("ready")
 
-        actions = ttk.Frame(self, padding=(12, 0, 12, 10))
-        actions.pack(fill=tk.X)
+        controls = ttk.Frame(detail, padding=(0, 16, 0, 8), style="Panel.TFrame")
+        controls.pack(fill=tk.X)
         for label, command in [
             ("Start", self.start_bot),
             ("Stop", self.stop_bot),
             ("Restart", self.restart_bot),
             ("Refresh", self.refresh_status),
+        ]:
+            button = ttk.Button(controls, text=label, command=command, style="Panel.TButton")
+            button.pack(side=tk.LEFT, padx=(0, 8))
+            self.buttons.append(button)
+
+        tools = ttk.Frame(detail, padding=(0, 0, 0, 14), style="Panel.TFrame")
+        tools.pack(fill=tk.X)
+        for label, command in [
             ("Logs", self.open_logs),
             ("Downloads", self.open_downloads),
         ]:
-            button = ttk.Button(actions, text=label, command=command)
+            button = ttk.Button(tools, text=label, command=command, style="Panel.TButton")
             button.pack(side=tk.LEFT, padx=(0, 8))
-            if label not in {"Logs", "Downloads"}:
-                self.buttons.append(button)
 
-        output_frame = ttk.Frame(self, padding=(12, 0, 12, 12))
+        ttk.Label(detail, text="Activity", style="Section.TLabel").pack(anchor="w", pady=(4, 8))
+        output_frame = ttk.Frame(detail, style="Panel.TFrame")
         output_frame.pack(fill=tk.BOTH, expand=True)
         self.output = tk.Text(
             output_frame,
@@ -176,11 +259,26 @@ class BotManagerApp(tk.Tk):
             font=("Consolas", 10),
             relief=tk.SOLID,
             borderwidth=1,
+            padx=10,
+            pady=8,
         )
         self.output.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar = ttk.Scrollbar(output_frame, orient=tk.VERTICAL, command=self.output.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.output.configure(yscrollcommand=scrollbar.set)
+
+    def _display_name_for_bot(self, bot: str) -> str:
+        config = self.manifest.get("bots", {}).get(bot, {})
+        return config.get("displayName", bot)
+
+    def _on_app_selected(self, _event=None) -> None:
+        selection = self.app_list.curselection()
+        if not selection:
+            return
+        self.bot_var.set(self.bot_names[selection[0]])
+        self.display_label.configure(text=self._selected_display_name())
+        self._set_status("ready")
+        self.refresh_status()
 
     def _selected_bot(self) -> str:
         bot = self.bot_var.get()
@@ -189,9 +287,7 @@ class BotManagerApp(tk.Tk):
         return bot
 
     def _selected_display_name(self) -> str:
-        bot = self.bot_var.get()
-        config = self.manifest.get("bots", {}).get(bot, {})
-        return config.get("displayName", bot)
+        return self._display_name_for_bot(self.bot_var.get())
 
     def _selected_config(self) -> dict:
         return self.manifest.get("bots", {}).get(self._selected_bot(), {})
@@ -205,6 +301,12 @@ class BotManagerApp(tk.Tk):
         self.output.insert(tk.END, text + "\n\n")
         self.output.see(tk.END)
 
+    def _set_status(self, kind: str, label: str | None = None) -> None:
+        self.status_var.set(label or status_text(kind))
+        background, foreground = STATUS_COLORS.get(kind, STATUS_COLORS["ready"])
+        if hasattr(self, "status_badge"):
+            self.status_badge.configure(background=background, foreground=foreground)
+
     def _run_async(self, command: str, after_status: bool = False) -> None:
         try:
             bot = self._selected_bot()
@@ -212,7 +314,7 @@ class BotManagerApp(tk.Tk):
             messagebox.showerror(APP_NAME, str(error))
             return
 
-        self.status_var.set(f"{command}...")
+        self._set_status("ready", f"{command}...")
         self._set_busy(True)
 
         def worker() -> None:
@@ -237,7 +339,7 @@ class BotManagerApp(tk.Tk):
         self._set_busy(False)
         self.display_label.configure(text=self._selected_display_name())
         if error is not None:
-            self.status_var.set("error")
+            self._set_status("error")
             self._append_output(f"> {command}\n\n{error}")
             return
 
@@ -246,20 +348,14 @@ class BotManagerApp(tk.Tk):
         self._append_output(text)
         self._update_status_from_text(result.stdout)
         if result.returncode != 0:
-            self.status_var.set("error")
+            self._set_status("error")
             messagebox.showerror(APP_NAME, result.stderr.strip() or text)
             return
         if after_status:
             self.refresh_status()
 
     def _update_status_from_text(self, text: str) -> None:
-        lowered = text.lower()
-        if "running" in lowered:
-            self.status_var.set("running")
-        elif "stopped" in lowered:
-            self.status_var.set("stopped")
-        else:
-            self.status_var.set("ready")
+        self._set_status(status_kind_from_text(text))
 
     def refresh_status(self) -> None:
         self._run_async("status")
