@@ -6,6 +6,7 @@ from collections import deque
 from dataclasses import dataclass, replace
 from enum import Enum
 from pathlib import Path
+from threading import RLock
 
 
 class JobStatus(str, Enum):
@@ -13,6 +14,7 @@ class JobStatus(str, Enum):
     RUNNING = "running"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 @dataclass(frozen=True)
@@ -30,25 +32,30 @@ class InMemoryJobQueue:
         self._next_id = 1
         self._pending: deque[int] = deque()
         self._jobs: dict[int, DownloadJob] = {}
+        self._lock = RLock()
 
     @property
     def pending_count(self) -> int:
-        return len(self._pending)
+        with self._lock:
+            return len(self._pending)
 
     def enqueue(self, url: str, chat_id: int) -> DownloadJob:
-        job = DownloadJob(id=self._next_id, url=url, chat_id=chat_id)
-        self._next_id += 1
-        self._jobs[job.id] = job
-        self._pending.append(job.id)
-        return job
+        with self._lock:
+            job = DownloadJob(id=self._next_id, url=url, chat_id=chat_id)
+            self._next_id += 1
+            self._jobs[job.id] = job
+            self._pending.append(job.id)
+            return job
 
     def pop_next(self) -> DownloadJob | None:
-        if not self._pending:
-            return None
-        return self._jobs[self._pending.popleft()]
+        with self._lock:
+            if not self._pending:
+                return None
+            return self._jobs[self._pending.popleft()]
 
     def get(self, job_id: int) -> DownloadJob:
-        return self._jobs[job_id]
+        with self._lock:
+            return self._jobs[job_id]
 
     def mark_started(self, job_id: int) -> DownloadJob:
         return self._replace(job_id, status=JobStatus.RUNNING, error=None)
@@ -64,7 +71,20 @@ class InMemoryJobQueue:
     def mark_failed(self, job_id: int, error: str) -> DownloadJob:
         return self._replace(job_id, status=JobStatus.FAILED, error=error)
 
+    def mark_cancelled(self, job_id: int, error: str) -> DownloadJob:
+        return self._replace(job_id, status=JobStatus.CANCELLED, error=error)
+
+    def cancel_pending(self, reason: str) -> int:
+        with self._lock:
+            cancelled = 0
+            while self._pending:
+                job_id = self._pending.popleft()
+                self._replace(job_id, status=JobStatus.CANCELLED, error=reason)
+                cancelled += 1
+            return cancelled
+
     def _replace(self, job_id: int, **changes: object) -> DownloadJob:
-        updated = replace(self._jobs[job_id], **changes)
-        self._jobs[job_id] = updated
-        return updated
+        with self._lock:
+            updated = replace(self._jobs[job_id], **changes)
+            self._jobs[job_id] = updated
+            return updated

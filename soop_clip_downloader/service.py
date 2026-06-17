@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import threading
+import time
 from typing import Protocol
 from urllib.parse import urlsplit
 
-from soop_clip_downloader.downloader import DownloadProgress
+from soop_clip_downloader.downloader import DownloadCancelled, DownloadProgress
 from soop_clip_downloader.delivery import PathOnlyDeliverer
 from soop_clip_downloader.downloader import DownloadError
 
@@ -43,6 +45,9 @@ class QueueLike(Protocol):
 
     def mark_failed(self, job_id: int, error: str):
         """Mark a job as failed."""
+
+    def mark_cancelled(self, job_id: int, error: str):
+        """Mark a job as cancelled."""
 
 
 class DownloaderLike(Protocol):
@@ -109,17 +114,75 @@ class DownloadWorker:
         downloader: DownloaderLike,
         telegram: TelegramGateway,
         deliverer: FileDeliverer | None = None,
+        run_in_background: bool = False,
     ) -> None:
         self._queue = queue
         self._downloader = downloader
         self._telegram = telegram
         self._deliverer = deliverer or PathOnlyDeliverer(telegram=telegram)
+        self._run_in_background = run_in_background
+        self._stop_requested = threading.Event()
+        self._active_thread: threading.Thread | None = None
+        self._active_lock = threading.Lock()
 
     def process_next(self) -> bool:
+        if self._run_in_background:
+            return self._process_next_in_background()
+
         job = self._queue.pop_next()
         if job is None:
             return False
 
+        self._stop_requested.clear()
+        self._process_job(job)
+        return True
+
+    def request_stop(self) -> bool:
+        active = self.is_busy()
+        self._stop_requested.set()
+        return active
+
+    def is_busy(self) -> bool:
+        self._reap_finished_thread()
+        with self._active_lock:
+            return self._active_thread is not None and self._active_thread.is_alive()
+
+    def wait_until_idle(self, *, timeout_seconds: float) -> bool:
+        deadline = time.monotonic() + timeout_seconds
+        while True:
+            with self._active_lock:
+                thread = self._active_thread
+            if thread is None:
+                return True
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            thread.join(timeout=remaining)
+            self._reap_finished_thread()
+
+    def _process_next_in_background(self) -> bool:
+        self._reap_finished_thread()
+        if self.is_busy():
+            return False
+
+        job = self._queue.pop_next()
+        if job is None:
+            return False
+
+        self._stop_requested.clear()
+        thread = threading.Thread(target=self._process_job, args=(job,), daemon=True)
+        with self._active_lock:
+            self._active_thread = thread
+        thread.start()
+        return True
+
+    def _reap_finished_thread(self) -> None:
+        with self._active_lock:
+            if self._active_thread is not None and not self._active_thread.is_alive():
+                self._active_thread.join(timeout=0)
+                self._active_thread = None
+
+    def _process_job(self, job) -> None:
         self._queue.mark_started(job.id)
         self._telegram.send_message(
             job.chat_id,
@@ -132,7 +195,15 @@ class DownloadWorker:
         )
         progress.start()
         try:
-            result = self._downloader.download(job, progress_callback=progress.update)
+            result = self._downloader.download(
+                job,
+                progress_callback=self._cancel_aware_progress_callback(progress),
+            )
+        except DownloadCancelled:
+            self._queue.mark_cancelled(job.id, "cancelled by user")
+            progress.fail("cancelled")
+            self._telegram.send_message(job.chat_id, f"Download cancelled #{job.id}")
+            return
         except DownloadError as exc:
             message = str(exc)
             self._queue.mark_failed(job.id, message)
@@ -141,7 +212,7 @@ class DownloadWorker:
                 job.chat_id,
                 f"Download failed #{job.id}: {message}",
             )
-            return True
+            return
 
         self._queue.mark_succeeded(job.id, result.file_path)
         progress.complete()
@@ -157,7 +228,14 @@ class DownloadWorker:
             job_id=job.id,
             file_path=result.file_path,
         )
-        return True
+
+    def _cancel_aware_progress_callback(self, progress: "TelegramProgressReporter"):
+        def update(download_progress: DownloadProgress) -> None:
+            if self._stop_requested.is_set():
+                raise DownloadCancelled("cancelled by user")
+            progress.update(download_progress)
+
+        return update
 
 
 class TelegramProgressReporter:

@@ -97,6 +97,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\create-bot-manag
 
 Then open `app manager` from the desktop to start, stop, restart, refresh, or open logs/downloads for registered apps.
 
+While the bot service is running, send `/stop`, `/cancel`, `중단`, or `취소` in Telegram to cancel the active download and clear queued downloads. The bot service stays running and can accept the next clip URL.
+
 Or run the Python package directly after exporting the environment variables:
 
 ```powershell

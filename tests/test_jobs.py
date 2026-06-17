@@ -41,6 +41,20 @@ class JobQueueTests(unittest.TestCase):
         self.assertEqual(updated.status, JobStatus.FAILED)
         self.assertEqual(updated.error, "yt-dlp failed")
 
+    def test_cancel_pending_marks_queued_jobs_cancelled(self):
+        queue = InMemoryJobQueue()
+        first = queue.enqueue("https://vod.sooplive.com/player/1", chat_id=100)
+        second = queue.enqueue("https://vod.sooplive.com/player/2", chat_id=100)
+
+        cancelled = queue.cancel_pending("cancelled by user")
+
+        self.assertEqual(cancelled, 2)
+        self.assertEqual(queue.pending_count, 0)
+        self.assertEqual(queue.get(first.id).status, JobStatus.CANCELLED)
+        self.assertEqual(queue.get(first.id).error, "cancelled by user")
+        self.assertEqual(queue.get(second.id).status, JobStatus.CANCELLED)
+        self.assertIsNone(queue.pop_next())
+
 
 if __name__ == "__main__":
     unittest.main()

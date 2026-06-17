@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -86,6 +87,10 @@ class DownloadError(RuntimeError):
     """Raised when yt-dlp fails or no output file can be located."""
 
 
+class DownloadCancelled(DownloadError):
+    """Raised when the active download is cancelled by the user."""
+
+
 ProgressCallback = Callable[[DownloadProgress], None]
 CommandRunner = Callable[[list[str], ProgressCallback | None], CommandResult]
 
@@ -132,6 +137,9 @@ class SubprocessCommandRunner:
                     progress = parse_ytdlp_progress_line(line)
                     if progress:
                         progress_callback(progress)
+        except Exception:
+            _terminate_process_tree(completed)
+            raise
         finally:
             completed.stdout.close()
 
@@ -219,3 +227,22 @@ def _newest_mp4(download_dir: Path, before: set[Path]) -> Path | None:
 def _best_error_message(result: CommandResult) -> str:
     message = (result.stderr or result.stdout).strip()
     return message or f"yt-dlp failed with exit code {result.returncode}"
+
+
+def _terminate_process_tree(process: subprocess.Popen) -> None:
+    if process.poll() is not None:
+        return
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+    else:
+        process.terminate()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)

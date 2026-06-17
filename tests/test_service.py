@@ -1,4 +1,6 @@
 from pathlib import Path
+import threading
+import time
 import unittest
 
 from soop_clip_downloader.downloader import DownloadError, DownloadProgress, DownloadResult
@@ -70,6 +72,18 @@ class FailingDownloader:
 class EditFailingTelegram(RecordingTelegram):
     def edit_message_text(self, chat_id: int, message_id: int, text: str):
         raise RuntimeError("edit failed")
+
+
+class WaitingDownloader:
+    def __init__(self):
+        self.started = threading.Event()
+
+    def download(self, job, progress_callback=None):
+        self.started.set()
+        while True:
+            if progress_callback:
+                progress_callback(DownloadProgress(percent=1.0, eta="01:00", speed="1MiB/s"))
+            time.sleep(0.01)
 
 
 class ServiceTests(unittest.TestCase):
@@ -192,6 +206,28 @@ class ServiceTests(unittest.TestCase):
             (100, "Download complete #1: downloads\\clip.mp4"),
             telegram.messages,
         )
+
+    def test_background_worker_cancels_active_download(self):
+        queue = InMemoryJobQueue()
+        queue.enqueue("https://vod.sooplive.com/player/195880425", chat_id=100)
+        telegram = RecordingTelegram()
+        downloader = WaitingDownloader()
+        worker = DownloadWorker(
+            queue=queue,
+            downloader=downloader,
+            telegram=telegram,
+            run_in_background=True,
+        )
+
+        self.assertTrue(worker.process_next())
+        self.assertTrue(downloader.started.wait(timeout=1))
+        self.assertTrue(worker.request_stop())
+        self.assertTrue(worker.wait_until_idle(timeout_seconds=2))
+
+        job = queue.get(1)
+        self.assertEqual(job.status, JobStatus.CANCELLED)
+        self.assertEqual(job.error, "cancelled by user")
+        self.assertIn((100, "Download cancelled #1"), telegram.messages)
 
 
 if __name__ == "__main__":

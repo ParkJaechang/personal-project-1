@@ -100,6 +100,15 @@ Expected Telegram replies:
 4. `Download finished #1: ... Sending to Telegram...`
 5. Either the uploaded MP4 or `Download complete #1: <local path>`
 
+To cancel the active download and clear queued jobs while the service keeps running, send one of:
+
+```text
+/stop
+/cancel
+중단
+취소
+```
+
 Catch URLs such as `https://vod.sooplive.com/player/{title_no}/catch` are intentionally rejected.
 
 ## 7. 2000 MB Clip Behavior

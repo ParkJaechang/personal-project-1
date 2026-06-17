@@ -14,9 +14,25 @@ class FakeTelegram:
 class FakeJobQueue:
     def __init__(self):
         self.urls = []
+        self.cancel_reason = None
+        self.pending_to_cancel = 0
 
     def enqueue(self, url: str, chat_id: int) -> None:
         self.urls.append((url, chat_id))
+
+    def cancel_pending(self, reason: str) -> int:
+        self.cancel_reason = reason
+        return self.pending_to_cancel
+
+
+class FakeDownloadController:
+    def __init__(self):
+        self.requested = False
+        self.active = False
+
+    def request_stop(self) -> bool:
+        self.requested = True
+        return self.active
 
 
 class ClipBotAppTests(unittest.TestCase):
@@ -59,6 +75,35 @@ class ClipBotAppTests(unittest.TestCase):
                     100,
                     "No supported SOOP User Clip URL found. "
                     "Use https://vod.sooplive.com/player/{id}.",
+                )
+            ],
+        )
+
+    def test_stop_command_requests_active_cancel_and_clears_pending_jobs(self):
+        telegram = FakeTelegram()
+        queue = FakeJobQueue()
+        queue.pending_to_cancel = 2
+        controller = FakeDownloadController()
+        controller.active = True
+        app = ClipBotApp(
+            allowed_chat_id=100,
+            telegram=telegram,
+            job_queue=queue,
+            download_controller=controller,
+        )
+
+        app.handle_text_message(chat_id=100, text="/stop")
+
+        self.assertTrue(controller.requested)
+        self.assertEqual(queue.cancel_reason, "cancelled by user")
+        self.assertEqual(queue.urls, [])
+        self.assertEqual(
+            telegram.messages,
+            [
+                (
+                    100,
+                    "Stop requested. Active download will cancel shortly. "
+                    "Cleared 2 queued download(s).",
                 )
             ],
         )

@@ -38,11 +38,6 @@ def build_runtime(
         local_file_uri_base=settings.telegram_local_file_uri_base,
     )
     queue = queue or InMemoryJobQueue()
-    app = ClipBotApp(
-        allowed_chat_id=settings.telegram_allowed_chat_id,
-        telegram=telegram,
-        job_queue=queue,
-    )
     downloader = downloader or YtdlpDownloader(
         download_dir=settings.download_dir,
         ytdlp_path=settings.ytdlp_path,
@@ -58,6 +53,13 @@ def build_runtime(
         downloader=downloader,
         telegram=telegram,
         deliverer=deliverer,
+        run_in_background=True,
+    )
+    app = ClipBotApp(
+        allowed_chat_id=settings.telegram_allowed_chat_id,
+        telegram=telegram,
+        job_queue=queue,
+        download_controller=worker,
     )
     service = PollingService(
         telegram=telegram,

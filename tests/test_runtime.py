@@ -74,6 +74,7 @@ class RuntimeTests(unittest.TestCase):
                 text="https://vod.sooplive.com/player/195880425",
             )
             runtime.worker.process_next()
+            self.assertTrue(runtime.worker.wait_until_idle(timeout_seconds=1))
 
             self.assertEqual(
                 telegram.messages,
