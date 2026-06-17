@@ -37,6 +37,29 @@ def build_ytdlp_command(
     ]
 
 
+def build_ffmpeg_remux_command(
+    *,
+    file_path: Path,
+    temp_path: Path,
+    ffmpeg_path: str,
+) -> list[str]:
+    """Build a lossless MP4 remux command to rewrite container metadata."""
+
+    return [
+        ffmpeg_path,
+        "-y",
+        "-i",
+        str(file_path),
+        "-map",
+        "0",
+        "-c",
+        "copy",
+        "-movflags",
+        "+faststart",
+        str(temp_path),
+    ]
+
+
 @dataclass(frozen=True)
 class CommandResult:
     returncode: int
@@ -152,12 +175,32 @@ class YtdlpDownloader:
         if file_path is None:
             raise DownloadError("yt-dlp completed but no MP4 file was found")
 
+        self._remux_mp4(file_path)
+
         return DownloadResult(
             job=job,
             file_path=file_path,
             stdout=result.stdout,
             stderr=result.stderr,
         )
+
+    def _remux_mp4(self, file_path: Path) -> None:
+        temp_path = file_path.with_name(f"{file_path.stem}.remuxing{file_path.suffix}")
+        temp_path.unlink(missing_ok=True)
+        result = self._command_runner(
+            build_ffmpeg_remux_command(
+                file_path=file_path,
+                temp_path=temp_path,
+                ffmpeg_path=self._ffmpeg_path,
+            ),
+            None,
+        )
+        if result.returncode != 0:
+            temp_path.unlink(missing_ok=True)
+            raise DownloadError(_best_error_message(result))
+        if not temp_path.exists():
+            raise DownloadError("ffmpeg remux completed but no MP4 file was found")
+        temp_path.replace(file_path)
 
 
 def _newest_mp4(download_dir: Path, before: set[Path]) -> Path | None:

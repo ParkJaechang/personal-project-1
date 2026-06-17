@@ -59,9 +59,12 @@ class DownloaderTests(unittest.TestCase):
             def fake_run(command, progress_callback=None):
                 calls.append(command)
                 download_dir.mkdir(parents=True, exist_ok=True)
-                output = download_dir / "clip.mp4"
-                output.write_bytes(b"video")
-                if progress_callback:
+                if command[0] == "yt-dlp":
+                    output = download_dir / "clip.mp4"
+                    output.write_bytes(b"video")
+                else:
+                    Path(command[-1]).write_bytes(b"clean-video")
+                if command[0] == "yt-dlp" and progress_callback:
                     progress_callback(DownloadProgress(percent=55.0, eta="00:05", speed="9MiB/s"))
                 return CommandResult(returncode=0, stdout="ok", stderr="")
 
@@ -84,6 +87,24 @@ class DownloaderTests(unittest.TestCase):
 
             self.assertEqual(result.file_path, download_dir / "clip.mp4")
             self.assertIn("https://vod.sooplive.com/player/195880425", calls[0])
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(
+                calls[1],
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    str(download_dir / "clip.mp4"),
+                    "-map",
+                    "0",
+                    "-c",
+                    "copy",
+                    "-movflags",
+                    "+faststart",
+                    str(download_dir / "clip.remuxing.mp4"),
+                ],
+            )
+            self.assertEqual((download_dir / "clip.mp4").read_bytes(), b"clean-video")
             self.assertEqual(
                 progress_events,
                 [DownloadProgress(percent=55.0, eta="00:05", speed="9MiB/s")],
