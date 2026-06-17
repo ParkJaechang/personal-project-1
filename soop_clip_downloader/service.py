@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 import threading
 import time
 from typing import Protocol
@@ -26,6 +27,14 @@ class TelegramGateway(Protocol):
 
     def send_message(self, chat_id: int, text: str) -> object:
         """Send a Telegram text message."""
+
+
+class OffsetStore(Protocol):
+    def load(self) -> int | None:
+        """Load the next Telegram update offset, if one was saved."""
+
+    def save(self, offset: int) -> None:
+        """Persist the next Telegram update offset."""
 
 
 class TextMessageHandler(Protocol):
@@ -73,6 +82,27 @@ def extract_text_updates(response: dict) -> list[TextUpdate]:
     return updates
 
 
+class FileOffsetStore:
+    def __init__(self, path: Path) -> None:
+        self._path = path
+
+    def load(self) -> int | None:
+        try:
+            text = self._path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return None
+        if not text:
+            return None
+        try:
+            return int(text)
+        except ValueError:
+            return None
+
+    def save(self, offset: int) -> None:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._path.write_text(str(offset), encoding="utf-8")
+
+
 class PollingService:
     def __init__(
         self,
@@ -81,12 +111,14 @@ class PollingService:
         app: TextMessageHandler,
         worker,
         poll_timeout_seconds: int = 30,
+        offset_store: OffsetStore | None = None,
     ) -> None:
         self._telegram = telegram
         self._app = app
         self._worker = worker
         self._poll_timeout_seconds = poll_timeout_seconds
-        self.next_offset: int | None = None
+        self._offset_store = offset_store
+        self.next_offset = offset_store.load() if offset_store is not None else None
 
     def poll_once(self) -> None:
         response = self._telegram.get_updates(
@@ -97,6 +129,8 @@ class PollingService:
         for update in updates:
             self._app.handle_text_message(chat_id=update.chat_id, text=update.text)
             self.next_offset = max(self.next_offset or 0, update.update_id + 1)
+            if self._offset_store is not None:
+                self._offset_store.save(self.next_offset)
 
         while self._worker.process_next():
             pass

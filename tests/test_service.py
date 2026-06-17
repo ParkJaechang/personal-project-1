@@ -9,6 +9,7 @@ from soop_clip_downloader.delivery import DeliveryOutcome
 from soop_clip_downloader.jobs import InMemoryJobQueue, JobStatus
 from soop_clip_downloader.service import (
     DownloadWorker,
+    FileOffsetStore,
     PollingService,
     extract_text_updates,
 )
@@ -106,6 +107,18 @@ class OutcomeDeliverer:
         return self.outcome
 
 
+class RecordingOffsetStore:
+    def __init__(self, initial=None):
+        self.initial = initial
+        self.saved = []
+
+    def load(self):
+        return self.initial
+
+    def save(self, offset: int) -> None:
+        self.saved.append(offset)
+
+
 class ServiceTests(unittest.TestCase):
     def test_extract_text_updates_ignores_non_text_messages(self):
         response = {
@@ -154,6 +167,51 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(app.messages, [(100, "hello"), (100, "again")])
         self.assertEqual(service.next_offset, 12)
         self.assertEqual(worker.calls, 2)
+
+    def test_polling_service_loads_persisted_offset(self):
+        telegram = RecordingTelegram([])
+        service = PollingService(
+            telegram=telegram,
+            app=RecordingApp(),
+            worker=OneJobWorker(),
+            offset_store=RecordingOffsetStore(initial=42),
+        )
+
+        service.poll_once()
+
+        self.assertEqual(telegram.offsets, [(42, 30)])
+
+    def test_polling_service_persists_offset_after_dispatch(self):
+        telegram = RecordingTelegram(
+            [
+                {
+                    "update_id": 10,
+                    "message": {"chat": {"id": 100}, "text": "hello"},
+                }
+            ]
+        )
+        offset_store = RecordingOffsetStore()
+        service = PollingService(
+            telegram=telegram,
+            app=RecordingApp(),
+            worker=OneJobWorker(),
+            offset_store=offset_store,
+        )
+
+        service.poll_once()
+
+        self.assertEqual(offset_store.saved, [11])
+
+    def test_file_offset_store_round_trips_value(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            offset_path = Path(temp_dir) / ".local" / "telegram-offset.txt"
+            store = FileOffsetStore(offset_path)
+
+            self.assertIsNone(store.load())
+
+            store.save(77)
+
+            self.assertEqual(FileOffsetStore(offset_path).load(), 77)
 
     def test_worker_marks_success_and_reports_saved_path(self):
         queue = InMemoryJobQueue()

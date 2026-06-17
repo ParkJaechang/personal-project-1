@@ -5,7 +5,7 @@ import unittest
 
 from soop_clip_downloader.config import Settings
 from soop_clip_downloader.downloader import DownloadResult
-from soop_clip_downloader.runtime import build_runtime, main as runtime_main
+from soop_clip_downloader.runtime import build_runtime, local_state_path, main as runtime_main
 
 
 class RecordingTelegram:
@@ -47,6 +47,13 @@ class RuntimeTests(unittest.TestCase):
         package_main = importlib.import_module("soop_clip_downloader.__main__")
 
         self.assertIs(package_main.main, runtime_main)
+
+    def test_local_state_path_uses_project_local_directory(self):
+        path = local_state_path("telegram-offset.txt")
+
+        self.assertTrue(path.is_absolute())
+        self.assertEqual(path.parent.name, ".local")
+        self.assertEqual(path.name, "telegram-offset.txt")
 
     def test_build_runtime_wires_app_queue_worker_and_file_delivery(self):
         with tempfile.TemporaryDirectory() as temp_dir:

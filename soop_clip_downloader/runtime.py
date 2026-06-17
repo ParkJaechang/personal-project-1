@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from soop_clip_downloader.app import ClipBotApp
 from soop_clip_downloader.config import Settings, load_settings
 from soop_clip_downloader.delivery import CompletedFileDeliverer
 from soop_clip_downloader.downloader import YtdlpDownloader
 from soop_clip_downloader.jobs import InMemoryJobQueue
-from soop_clip_downloader.service import DownloadWorker, PollingService
+from soop_clip_downloader.service import DownloadWorker, FileOffsetStore, PollingService
+from soop_clip_downloader.single_instance import AlreadyRunningError, SingleInstanceLock
 from soop_clip_downloader.telegram_api import TelegramClient
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 @dataclass(frozen=True)
@@ -22,6 +27,10 @@ class Runtime:
     downloader: object
     worker: DownloadWorker
     service: PollingService
+
+
+def local_state_path(filename: str) -> Path:
+    return PROJECT_ROOT / ".local" / filename
 
 
 def build_runtime(
@@ -65,6 +74,7 @@ def build_runtime(
         telegram=telegram,
         app=app,
         worker=worker,
+        offset_store=FileOffsetStore(local_state_path("telegram-offset.txt")),
     )
     return Runtime(
         settings=settings,
@@ -78,9 +88,13 @@ def build_runtime(
 
 
 def run(settings: Settings | None = None) -> None:
-    runtime = build_runtime(settings or load_settings())
-    runtime.service.run_forever()
+    with SingleInstanceLock(local_state_path("soop-service.lock")):
+        runtime = build_runtime(settings or load_settings())
+        runtime.service.run_forever()
 
 
 def main() -> None:
-    run()
+    try:
+        run()
+    except AlreadyRunningError as exc:
+        print(exc)

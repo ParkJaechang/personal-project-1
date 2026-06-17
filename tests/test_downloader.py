@@ -126,6 +126,33 @@ class DownloaderTests(unittest.TestCase):
                 [DownloadProgress(percent=55.0, eta="00:05", speed="9MiB/s")],
             )
 
+    def test_runner_does_not_fall_back_to_existing_old_mp4(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            download_dir = Path(temp_dir) / "downloads"
+            download_dir.mkdir(parents=True)
+            old_file = download_dir / "old.mp4"
+            old_file.write_bytes(b"old-video")
+
+            downloader = YtdlpDownloader(
+                download_dir=download_dir,
+                ytdlp_path="yt-dlp",
+                ffmpeg_path="ffmpeg",
+                command_runner=lambda command, progress_callback=None: CommandResult(
+                    returncode=0,
+                    stdout="already downloaded",
+                    stderr="",
+                ),
+            )
+
+            with self.assertRaisesRegex(DownloadError, "no new MP4"):
+                downloader.download(
+                    DownloadJob(
+                        id=1,
+                        url="https://vod.sooplive.com/player/195880425",
+                        chat_id=100,
+                    )
+                )
+
     def test_runner_raises_error_when_command_fails(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             downloader = YtdlpDownloader(

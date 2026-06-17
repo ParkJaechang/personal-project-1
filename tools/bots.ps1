@@ -82,6 +82,19 @@ function Get-BotProcesses {
         }
 }
 
+function Select-BotWorkerProcesses {
+    param([object[]] $Processes)
+
+    $matchedParentIds = @{}
+    foreach ($process in $Processes) {
+        $matchedParentIds[[int] $process.ParentProcessId] = $true
+    }
+
+    return $Processes | Where-Object {
+        -not $matchedParentIds.ContainsKey([int] $_.ProcessId)
+    }
+}
+
 function Show-BotStatus {
     param(
         [string] $Name,
@@ -93,7 +106,7 @@ function Show-BotStatus {
         return
     }
 
-    $processes = @(Get-BotProcesses -Config $Config)
+    $processes = @(Select-BotWorkerProcesses -Processes @(Get-BotProcesses -Config $Config))
     if ($processes.Count -eq 0) {
         Write-Output "$Name stopped"
         return

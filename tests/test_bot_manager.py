@@ -46,6 +46,13 @@ class BotManagerTests(unittest.TestCase):
         self.assertIn("stopScript", script)
         self.assertIn("startMode", script)
 
+    def test_status_filters_venv_launcher_parent_processes(self):
+        script = Path("tools/bots.ps1").read_text(encoding="utf-8")
+
+        self.assertIn("Select-BotWorkerProcesses", script)
+        self.assertIn("ParentProcessId", script)
+        self.assertIn("matchedParentIds.ContainsKey([int] $_.ProcessId)", script)
+
 
 if __name__ == "__main__":
     unittest.main()

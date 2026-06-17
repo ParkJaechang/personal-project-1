@@ -172,7 +172,7 @@ class YtdlpDownloader:
         progress_callback: ProgressCallback | None = None,
     ) -> DownloadResult:
         self._download_dir.mkdir(parents=True, exist_ok=True)
-        before = set(self._download_dir.glob("*.mp4"))
+        before = _mp4_snapshot(self._download_dir)
         command = build_ytdlp_command(
             url=job.url,
             download_dir=self._download_dir,
@@ -183,9 +183,9 @@ class YtdlpDownloader:
         if result.returncode != 0:
             raise DownloadError(_best_error_message(result))
 
-        file_path = _newest_mp4(self._download_dir, before)
+        file_path = _newest_changed_mp4(self._download_dir, before)
         if file_path is None:
-            raise DownloadError("yt-dlp completed but no MP4 file was found")
+            raise DownloadError("yt-dlp completed but no new MP4 file was found")
 
         self._remux_mp4(file_path)
 
@@ -215,10 +215,29 @@ class YtdlpDownloader:
         temp_path.replace(file_path)
 
 
-def _newest_mp4(download_dir: Path, before: set[Path]) -> Path | None:
-    candidates = [path for path in download_dir.glob("*.mp4") if path not in before]
-    if not candidates:
-        candidates = list(download_dir.glob("*.mp4"))
+def _mp4_snapshot(download_dir: Path) -> dict[Path, tuple[int, int]]:
+    snapshot = {}
+    for path in download_dir.glob("*.mp4"):
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        snapshot[path] = (stat.st_mtime_ns, stat.st_size)
+    return snapshot
+
+
+def _newest_changed_mp4(
+    download_dir: Path,
+    before: dict[Path, tuple[int, int]],
+) -> Path | None:
+    candidates = []
+    for path in download_dir.glob("*.mp4"):
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        if before.get(path) != (stat.st_mtime_ns, stat.st_size):
+            candidates.append(path)
     if not candidates:
         return None
     return max(candidates, key=lambda path: path.stat().st_mtime)
